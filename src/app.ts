@@ -1,5 +1,6 @@
 import express, { Express } from "express";
 import mongoose from 'mongoose';
+import cors from "cors";
 import routes from "./routes/index";
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger/swagger';
@@ -8,6 +9,10 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.dev" });
 
 const app = express();
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  credentials: true,
+}));
 app.use(express.json());
 app.use("/public", express.static("public"));
 

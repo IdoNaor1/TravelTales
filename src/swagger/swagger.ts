@@ -4,9 +4,9 @@ const options: swaggerJsdoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Social Media API',
+      title: 'TravelTales API',
       version: '1.0.0',
-      description: 'A comprehensive REST API for managing users, posts, and comments with JWT authentication',
+      description: 'REST API for TravelTales — a travel journal platform where users share experiences, upload photos, like posts, and explore destinations with AI-powered search.',
       contact: {
         name: 'API Support',
       },
@@ -49,7 +49,7 @@ const options: swaggerJsdoc.Options = {
             profilePicture: {
               type: 'string',
               description: 'URL to profile picture',
-              example: 'https://example.com/profile.jpg',
+              example: '/public/1709123456789.jpg',
             },
             createdAt: {
               type: 'string',
@@ -69,22 +69,89 @@ const options: swaggerJsdoc.Options = {
             title: {
               type: 'string',
               description: 'Post title',
-              example: 'My First Post',
+              example: 'Sunset in Santorini',
             },
             content: {
               type: 'string',
               description: 'Post content',
-              example: 'This is the content of my first post.',
+              example: 'The views from Oia were absolutely breathtaking...',
             },
             sender: {
               type: 'string',
               description: 'User ID of the post creator',
               example: '507f1f77bcf86cd799439011',
             },
+            image: {
+              type: 'string',
+              nullable: true,
+              description: 'URL to the uploaded travel photo',
+              example: '/public/1709123456789.jpg',
+            },
+            likes: {
+              type: 'array',
+              description: 'Array of user IDs who liked the post',
+              items: {
+                type: 'string',
+                example: '507f1f77bcf86cd799439011',
+              },
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Post creation timestamp',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Post last-updated timestamp',
+            },
             __v: {
               type: 'number',
               description: 'Version key',
               example: 0,
+            },
+          },
+        },
+        PaginatedPostsResponse: {
+          type: 'object',
+          properties: {
+            posts: {
+              type: 'array',
+              description: 'Page of posts sorted newest-first',
+              items: {
+                $ref: '#/components/schemas/Post',
+              },
+            },
+            nextCursor: {
+              type: 'string',
+              nullable: true,
+              description: 'Pass as `cursor` query param to fetch the next page. null when no more pages.',
+              example: '507f1f77bcf86cd799439012',
+            },
+          },
+        },
+        LikeToggleResponse: {
+          type: 'object',
+          properties: {
+            likesCount: {
+              type: 'number',
+              description: 'Total number of likes after the toggle',
+              example: 5,
+            },
+            isLikedByUser: {
+              type: 'boolean',
+              description: 'Whether the requesting user now likes the post',
+              example: true,
+            },
+          },
+        },
+        FileUploadResponse: {
+          type: 'object',
+          properties: {
+            url: {
+              type: 'string',
+              description: 'Public URL to access the uploaded file',
+              example: '/public/1709123456789.jpg',
             },
           },
         },
@@ -104,7 +171,7 @@ const options: swaggerJsdoc.Options = {
             content: {
               type: 'string',
               description: 'Comment content',
-              example: 'Great post!',
+              example: 'What a gorgeous view!',
             },
             author: {
               type: 'string',
@@ -147,7 +214,7 @@ const options: swaggerJsdoc.Options = {
             profilePicture: {
               type: 'string',
               description: 'URL to profile picture (optional)',
-              example: 'https://example.com/profile.jpg',
+              example: '/public/1709123456789.jpg',
             },
           },
         },
@@ -169,6 +236,17 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        GoogleLoginRequest: {
+          type: 'object',
+          required: ['credential'],
+          properties: {
+            credential: {
+              type: 'string',
+              description: 'Google ID token obtained from the Google Sign-In / One Tap button',
+              example: 'eyJhbGciOiJSUzI1NiIs...',
+            },
+          },
+        },
         AuthResponse: {
           type: 'object',
           properties: {
@@ -187,6 +265,12 @@ const options: swaggerJsdoc.Options = {
               format: 'email',
               description: 'User email',
               example: 'john@example.com',
+            },
+            profilePicture: {
+              type: 'string',
+              nullable: true,
+              description: 'Profile picture URL (populated for Google OAuth users)',
+              example: '/public/1709123456789.jpg',
             },
             token: {
               type: 'string',
@@ -244,12 +328,17 @@ const options: swaggerJsdoc.Options = {
             title: {
               type: 'string',
               description: 'Post title',
-              example: 'My First Post',
+              example: 'Sunset in Santorini',
             },
             content: {
               type: 'string',
-              description: 'Post content',
-              example: 'This is the content of my first post.',
+              description: 'Post content / travel story',
+              example: 'The views from Oia were absolutely breathtaking...',
+            },
+            image: {
+              type: 'string',
+              description: 'URL to uploaded travel photo (from POST /file)',
+              example: '/public/1709123456789.jpg',
             },
           },
         },
@@ -270,7 +359,7 @@ const options: swaggerJsdoc.Options = {
             profilePicture: {
               type: 'string',
               description: 'Updated profile picture URL',
-              example: 'https://example.com/new-profile.jpg',
+              example: '/public/1709123456789.jpg',
             },
           },
         },
@@ -286,7 +375,7 @@ const options: swaggerJsdoc.Options = {
             content: {
               type: 'string',
               description: 'Comment content',
-              example: 'Great post!',
+              example: 'What a gorgeous view!',
             },
           },
         },
@@ -376,23 +465,27 @@ const options: swaggerJsdoc.Options = {
     tags: [
       {
         name: 'Auth',
-        description: 'Authentication and authorization endpoints',
+        description: 'Authentication — password-based and Google OAuth',
       },
       {
         name: 'Users',
-        description: 'User management endpoints',
+        description: 'User profile management',
       },
       {
         name: 'Posts',
-        description: 'Post management endpoints',
+        description: 'Travel journal posts — create, read, update, delete, like, paginate',
       },
       {
         name: 'Comments',
-        description: 'Comment management endpoints',
+        description: 'Comments on travel posts',
+      },
+      {
+        name: 'Files',
+        description: 'Image upload — stores files in /public and returns a URL',
       },
     ],
   },
-  apis: ['./src/routes/*.ts'], // Path to the API routes
+  apis: ['./src/routes/*.ts'],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
