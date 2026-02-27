@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../model/userModel";
+import { OAuth2Client } from "google-auth-library";
 
 const generateTokens = (userId: string) => {
   const jwtSecret = process.env.JWT_SECRET;
@@ -204,5 +205,77 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error logging out", error });
+  }
+};
+
+export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      res.status(400).json({ message: "Google credential token required" });
+      return;
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      res.status(500).json({ message: "Google client ID not configured" });
+      return;
+    }
+
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: clientId,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.email) {
+      res.status(401).json({ message: "Invalid Google token" });
+      return;
+    }
+
+    const { email, name, picture } = payload;
+
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // New user — create account with Google info and a random unusable password
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+      // Derive a unique username from the Google name
+      const baseUsername = (name ?? email.split("@")[0]).replace(/\s+/g, "_");
+      let username = baseUsername;
+      let suffix = 1;
+      while (await User.findOne({ username })) {
+        username = `${baseUsername}_${suffix++}`;
+      }
+
+      user = new User({
+        username,
+        email,
+        password: hashedPassword,
+        profilePicture: picture,
+        refreshTokens: [],
+      });
+      await user.save();
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user._id.toString());
+
+    user.refreshTokens.push(refreshToken);
+    await user.save();
+
+    res.status(200).json({
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      profilePicture: user.profilePicture,
+      token: accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error authenticating with Google", error });
   }
 };

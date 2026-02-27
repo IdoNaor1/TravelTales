@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, refresh, logout } from "../controller/authController";
+import { register, login, refresh, logout, googleLogin } from "../controller/authController";
 
 const router = express.Router();
 
@@ -118,5 +118,41 @@ router.post("/refresh", refresh);
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.post("/logout", logout);
+
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     summary: Google OAuth login
+ *     description: Authenticate with a Google ID token (credential). Creates a new account if the email is not registered yet, otherwise logs in the existing user.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - credential
+ *             properties:
+ *               credential:
+ *                 type: string
+ *                 description: Google ID token obtained from the Google Sign-In button
+ *                 example: eyJhbGciOiJSUzI1NiIs...
+ *     responses:
+ *       200:
+ *         description: Authenticated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post("/google", googleLogin);
 
 export default router;
