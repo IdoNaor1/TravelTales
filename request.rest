@@ -1,0 +1,59 @@
+### Posts API
+
+### Create post
+POST http://localhost:3000/posts
+Content-Type: application/json
+
+{
+  "title": "Post 1",
+  "content": "This is the content",
+  "sender": "user1"
+}
+
+### Get all posts
+GET http://localhost:3000/posts
+
+### Get post by id
+GET http://localhost:3000/posts/<post-id>
+
+### Get posts by sender
+GET http://localhost:3000/posts?sender=user2
+
+### Update post by id
+PUT http://localhost:3000/posts/<post-id>
+Content-Type: application/json
+
+{
+  "title": "Updated Title",
+  "content": "Updated content.",
+  "sender": "updatedUser"
+}
+
+### Comments API
+
+### Create comment
+POST http://localhost:3000/comments
+Content-Type: application/json
+
+{
+  "postId": "<post-id>",
+  "author": "Author1",
+  "content": "This is a comment's content."
+}
+
+### Get comments by postId
+GET http://localhost:3000/comments?postId=<post-id>
+
+### Get comment by id
+GET http://localhost:3000/comments/<comment-id>
+
+### Update comment by id
+PUT http://localhost:3000/comments/<comment-id>
+Content-Type: application/json
+
+{
+  "content": "Updated comment text."
+}
+
+### Delete comment by id
+DELETE http://localhost:3000/comments/<comment-id>
