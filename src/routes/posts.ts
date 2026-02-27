@@ -34,7 +34,7 @@ const router = express.Router();
  *         $ref: '#/components/responses/InternalServerError'
  *   get:
  *     summary: Get all posts
- *     description: Retrieve all posts. Optionally filter by sender using the query parameter.
+ *     description: Retrieve posts with cursor-based pagination. Optionally filter by sender.
  *     tags: [Posts]
  *     parameters:
  *       - in: query
@@ -43,15 +43,33 @@ const router = express.Router();
  *           type: string
  *         description: Filter posts by sender (user ID)
  *         example: 507f1f77bcf86cd799439011
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of posts to return (max 100)
+ *       - in: query
+ *         name: cursor
+ *         schema:
+ *           type: string
+ *         description: ID of the last post from the previous page (for cursor pagination)
  *     responses:
  *       200:
- *         description: List of posts retrieved successfully
+ *         description: Paginated list of posts
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Post'
+ *               type: object
+ *               properties:
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Post'
+ *                 nextCursor:
+ *                   type: string
+ *                   nullable: true
+ *                   example: 507f1f77bcf86cd799439012
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */

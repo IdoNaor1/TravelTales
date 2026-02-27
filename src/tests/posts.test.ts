@@ -23,7 +23,7 @@ describe("Posts API Tests", () => {
   test("Sample Test Case", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual([]);
+    expect(response.body).toEqual({ posts: [], nextCursor: null });
   });
 
   test("Create Post Unauthorized Fails", async () => {
@@ -54,8 +54,9 @@ describe("Posts API Tests", () => {
   test("Get All Posts", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(postsList.length);
-    postId = response.body[0]._id; // Save the ID of the first post for later tests
+    expect(response.body.posts.length).toBe(postsList.length);
+    // Posts are sorted newest-first; take the last (oldest = postsList[0]) for later tests
+    postId = response.body.posts[response.body.posts.length - 1]._id;
   });
 
   test("Get Post by ID", async () => {
@@ -71,7 +72,7 @@ describe("Posts API Tests", () => {
       "/posts?sender=" + loggedInUser._id
     );
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(postsList.length - 1);
+    expect(response.body.posts.length).toBe(postsList.length - 1);
   });
 
   test("Update Post", async () => {
