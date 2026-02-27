@@ -95,10 +95,47 @@ const deletePostById = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const toggleLike = async (req: AuthRequest, res: Response) => {
+    const id = req.params.id;
+
+    if (!req.userId) {
+        return res.status(401).json("Unauthorized");
+    }
+
+    try {
+        const post = await postsModel.findById(id);
+        if (!post) {
+            return res.status(404).json("Post not found");
+        }
+
+        const userId = req.userId;
+        const alreadyLiked = post.likes.some(
+            (likeId) => likeId.toString() === userId
+        );
+
+        const updatedPost = await postsModel.findByIdAndUpdate(
+            id,
+            alreadyLiked
+                ? { $pull: { likes: userId } }
+                : { $addToSet: { likes: userId } },
+            { new: true }
+        );
+
+        res.status(200).json({
+            likesCount: updatedPost!.likes.length,
+            isLikedByUser: !alreadyLiked
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json("Error toggling like");
+    }
+};
+
 export default {
     createPost,
     getAllPosts,
     getPostById,
     updatePostById,
-    deletePostById
+    deletePostById,
+    toggleLike
 };

@@ -9,6 +9,7 @@ dotenv.config({ path: ".env.dev" });
 
 const app = express();
 app.use(express.json());
+app.use("/public", express.static("public"));
 
 // Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

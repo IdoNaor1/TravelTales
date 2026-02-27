@@ -156,4 +156,43 @@ router.route('/:id')
     .put(authMiddleware, postsController.updatePostById)
     .delete(authMiddleware, postsController.deletePostById);
 
+/**
+ * @swagger
+ * /posts/{id}/like:
+ *   post:
+ *     summary: Toggle like on a post
+ *     description: Adds a like if the user hasn't liked the post yet, or removes it if they already have.
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Post ID
+ *     responses:
+ *       200:
+ *         description: Like toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 likesCount:
+ *                   type: number
+ *                   example: 5
+ *                 isLikedByUser:
+ *                   type: boolean
+ *                   example: true
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.post('/:id/like', authMiddleware, postsController.toggleLike);
+
 export default router;
