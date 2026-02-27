@@ -4,7 +4,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 
 const createPost = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, content } = req.body;
+        const { title, content, image } = req.body;
 
         if (!req.userId) {
             return res.status(401).json("Unauthorized");
@@ -13,6 +13,7 @@ const createPost = async (req: AuthRequest, res: Response) => {
         const newPost = new postsModel({
             title,
             content,
+            image,
             sender: req.userId
         });
         await newPost.save();

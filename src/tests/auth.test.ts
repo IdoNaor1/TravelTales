@@ -3,6 +3,11 @@ import initApp from "../app";
 import { Express } from "express";
 import User from "../model/userModel";
 import { testUser, anotherUser, postsList } from "./utils";
+import { OAuth2Client } from "google-auth-library";
+
+jest.mock("google-auth-library", () => ({
+  OAuth2Client: jest.fn(),
+}));
 
 let app: Express;
 
@@ -280,5 +285,73 @@ describe("Authentication API Tests", () => {
       .post("/auth/refresh")
       .send({ refreshToken: refreshToken });
     expect(refreshResponse.status).toBe(401);
+  });
+});
+
+describe("Google OAuth Tests", () => {
+  const mockVerifyIdToken = jest.fn();
+
+  beforeEach(() => {
+    mockVerifyIdToken.mockReset();
+    (OAuth2Client as unknown as jest.Mock).mockImplementation(() => ({
+      verifyIdToken: mockVerifyIdToken,
+    }));
+  });
+
+  test("Missing credential returns 400", async () => {
+    const response = await request(app).post("/auth/google").send({});
+    expect(response.status).toBe(400);
+  });
+
+  test("Invalid Google token returns 500", async () => {
+    mockVerifyIdToken.mockRejectedValue(new Error("Token verification failed"));
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "invalid-token" });
+    expect(response.status).toBe(500);
+  });
+
+  test("Google token with null payload returns 401", async () => {
+    mockVerifyIdToken.mockResolvedValue({ getPayload: () => null });
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "token-no-payload" });
+    expect(response.status).toBe(401);
+  });
+
+  test("Valid Google token creates new user and returns tokens", async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        email: "googleuser@gmail.com",
+        name: "Google User",
+        picture: "https://example.com/photo.jpg",
+      }),
+    });
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "valid-google-token" });
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty("token");
+    expect(response.body).toHaveProperty("refreshToken");
+    expect(response.body).toHaveProperty("_id");
+    expect(response.body.email).toBe("googleuser@gmail.com");
+    expect(response.body.profilePicture).toBe("https://example.com/photo.jpg");
+  });
+
+  test("Valid Google token for existing user logs them in", async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        email: "googleuser@gmail.com",
+        name: "Google User",
+        picture: "https://example.com/photo.jpg",
+      }),
+    });
+    // Same email as previous test — should find existing user, not create new
+    const response = await request(app)
+      .post("/auth/google")
+      .send({ credential: "valid-google-token" });
+    expect(response.status).toBe(200);
+    expect(response.body.email).toBe("googleuser@gmail.com");
+    expect(response.body).toHaveProperty("token");
   });
 });
