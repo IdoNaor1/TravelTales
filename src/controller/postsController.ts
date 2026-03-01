@@ -4,7 +4,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 
 const createPost = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, content } = req.body;
+        const { title, content, image } = req.body;
 
         if (!req.userId) {
             return res.status(401).json("Unauthorized");
@@ -13,6 +13,7 @@ const createPost = async (req: AuthRequest, res: Response) => {
         const newPost = new postsModel({
             title,
             content,
+            image,
             sender: req.userId
         });
         await newPost.save();
@@ -26,14 +27,24 @@ const createPost = async (req: AuthRequest, res: Response) => {
 const getAllPosts = async (req: AuthRequest, res: Response) => {
     const senderRaw = req.query.sender;
     const sender = Array.isArray(senderRaw) ? senderRaw[0] : (typeof senderRaw === 'string' ? senderRaw : undefined);
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+    const cursor = req.query.cursor as string | undefined;
+
     try {
-        if (sender !== undefined) {
-            const posts = await postsModel.find({ sender });
-            res.status(200).json(posts);
-        } else {
-            const posts = await postsModel.find();
-            res.status(200).json(posts);
-        }
+        const filter: Record<string, unknown> = {};
+        if (sender !== undefined) filter.sender = sender;
+        if (cursor) filter._id = { $lt: cursor };
+
+        const posts = await postsModel
+            .find(filter)
+            .sort({ createdAt: -1, _id: -1 })
+            .limit(limit + 1);
+
+        const hasMore = posts.length > limit;
+        const page = hasMore ? posts.slice(0, limit) : posts;
+        const nextCursor = hasMore ? page[page.length - 1]._id.toString() : null;
+
+        res.status(200).json({ posts: page, nextCursor });
     } catch (error) {
         console.error(error);
         res.status(500).json("Error retrieving posts");
@@ -95,10 +106,47 @@ const deletePostById = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const toggleLike = async (req: AuthRequest, res: Response) => {
+    const id = req.params.id;
+
+    if (!req.userId) {
+        return res.status(401).json("Unauthorized");
+    }
+
+    try {
+        const post = await postsModel.findById(id);
+        if (!post) {
+            return res.status(404).json("Post not found");
+        }
+
+        const userId = req.userId;
+        const alreadyLiked = post.likes.some(
+            (likeId) => likeId.toString() === userId
+        );
+
+        const updatedPost = await postsModel.findByIdAndUpdate(
+            id,
+            alreadyLiked
+                ? { $pull: { likes: userId } }
+                : { $addToSet: { likes: userId } },
+            { new: true }
+        );
+
+        res.status(200).json({
+            likesCount: updatedPost!.likes.length,
+            isLikedByUser: !alreadyLiked
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json("Error toggling like");
+    }
+};
+
 export default {
     createPost,
     getAllPosts,
     getPostById,
     updatePostById,
-    deletePostById
+    deletePostById,
+    toggleLike
 };
