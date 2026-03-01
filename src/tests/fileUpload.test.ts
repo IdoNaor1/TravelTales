@@ -7,23 +7,33 @@ import fs from "fs";
 
 let app: Express;
 let loggedInUser: UserData;
+const uploadedUrls: string[] = [];
 
 beforeAll(async () => {
   app = await initApp();
   loggedInUser = await getLogedInUser(app);
 });
 
+beforeEach(async () => {
+  const refreshResp = await request(app)
+    .post("/auth/refresh")
+    .send({ refreshToken: loggedInUser.refreshToken });
+  expect(refreshResp.status).toBe(200);
+  loggedInUser.token = refreshResp.body.token;
+  loggedInUser.refreshToken = refreshResp.body.refreshToken;
+});
+
 afterAll((done) => {
-  // Remove any files uploaded during tests, keeping .gitkeep
+  // Remove only files created by this suite
   const publicDir = path.join(process.cwd(), "public");
-  if (fs.existsSync(publicDir)) {
-    fs.readdirSync(publicDir).forEach((file) => {
-      if (file !== ".gitkeep") {
-        try {
-          fs.unlinkSync(path.join(publicDir, file));
-        } catch (_) { /* ignore cleanup errors */ }
-      }
-    });
+  for (const url of uploadedUrls) {
+    const filename = path.basename(url);
+    const target = path.join(publicDir, filename);
+    if (fs.existsSync(target)) {
+      try {
+        fs.unlinkSync(target);
+      } catch (_) { /* ignore cleanup errors */ }
+    }
   }
   done();
 });
@@ -49,6 +59,7 @@ describe("File Upload API Tests", () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty("url");
     expect(response.body.url).toMatch(/^\/public\/.+\.jpg$/);
+    uploadedUrls.push(response.body.url);
   });
 
   test("Uploaded file is accessible via GET /public/<filename>", async () => {
@@ -59,6 +70,7 @@ describe("File Upload API Tests", () => {
     expect(uploadResponse.status).toBe(200);
 
     const fileUrl = uploadResponse.body.url; // e.g. /public/1234567890.png
+    uploadedUrls.push(fileUrl);
     const fileResponse = await request(app).get(fileUrl);
     expect(fileResponse.status).toBe(200);
   });
@@ -70,5 +82,6 @@ describe("File Upload API Tests", () => {
       .attach("file", Buffer.from("fake gif bytes"), "animation.gif");
     expect(gifResponse.status).toBe(200);
     expect(gifResponse.body.url).toMatch(/\.gif$/);
+    uploadedUrls.push(gifResponse.body.url);
   });
 });
