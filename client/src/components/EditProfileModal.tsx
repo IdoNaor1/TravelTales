@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
+import { FaTrash } from 'react-icons/fa';
 import { Modal, Button } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
+import apiClient from '../services/apiClient';
 import userService from '../services/userService';
 import type { IUser } from '../types';
 
@@ -16,7 +18,6 @@ function getAvatarSrc(pic: string): string {
 
 const schema = z.object({
   username: z.string().min(2, 'Username must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -31,6 +32,7 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
   const { refreshUser } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +43,7 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { username: user.username, email: user.email },
+    defaultValues: { username: user.username },
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,9 +51,22 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
     if (!file) return;
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+    setRemovePhoto(false);
   };
 
-  const currentAvatarSrc = previewUrl ?? (user.profilePicture && !imgError ? getAvatarSrc(user.profilePicture) : null);
+  const handleRemovePhoto = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setRemovePhoto(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const hasPhoto = !removePhoto && (selectedFile != null || (!!user.profilePicture && !imgError));
+  const currentAvatarSrc = selectedFile
+    ? previewUrl
+    : !removePhoto && user.profilePicture && !imgError
+      ? getAvatarSrc(user.profilePicture)
+      : null;
 
   const onSubmit = async (data: FormData) => {
     setApiError(null);
@@ -61,20 +76,15 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
       if (selectedFile) {
         const formData = new FormData();
         formData.append('file', selectedFile);
-        const uploadRes = await fetch(`${API_URL}/file`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
-          body: formData,
-        });
-        if (!uploadRes.ok) throw new Error('Image upload failed');
-        const { url } = await uploadRes.json();
+        const { url } = await apiClient.upload<{ url: string }>('/file', formData);
         profilePicture = url;
+      } else if (removePhoto) {
+        profilePicture = '';
       }
 
       await userService.updateUser(user._id, {
         username: data.username,
-        email: data.email,
-        ...(profilePicture && { profilePicture }),
+        ...(profilePicture !== undefined && { profilePicture }),
       });
       await refreshUser();
       onHide();
@@ -86,6 +96,7 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
   const handleClose = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
+    setRemovePhoto(false);
     setImgError(false);
     setApiError(null);
     onHide();
@@ -107,30 +118,57 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
 
           {/* Avatar picker */}
           <div className="text-center mb-4">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              style={{ cursor: 'pointer', display: 'inline-block' }}
-              title="Click to change photo"
-            >
-              {currentAvatarSrc ? (
-                <img
-                  src={currentAvatarSrc}
-                  alt="Profile"
-                  className="rounded-circle"
-                  style={{ width: 96, height: 96, objectFit: 'cover', border: '2px solid #dee2e6' }}
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white fw-bold"
-                  style={{ width: 96, height: 96, fontSize: 36 }}
-                >
-                  {user.username.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="text-muted mt-1" style={{ fontSize: 12 }}>
-                Click to change
+            <div style={{ display: 'inline-block', position: 'relative' }}>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{ cursor: 'pointer' }}
+                title="Click to change photo"
+              >
+                {currentAvatarSrc ? (
+                  <img
+                    src={currentAvatarSrc}
+                    alt="Profile"
+                    className="rounded-circle"
+                    style={{ width: 96, height: 96, objectFit: 'cover', border: '2px solid #dee2e6' }}
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white fw-bold"
+                    style={{ width: 96, height: 96, fontSize: 36 }}
+                  >
+                    {user.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
+              {hasPhoto && (
+                <button
+                  type="button"
+                  onClick={handleRemovePhoto}
+                  title="Remove photo"
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    right: 0,
+                    width: 26,
+                    height: 26,
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: '#dc3545',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <FaTrash size={11} />
+                </button>
+              )}
+            </div>
+            <div className="text-muted mt-1" style={{ fontSize: 12 }}>
+              {hasPhoto ? 'Click to change' : 'Add photo'}
             </div>
             <input
               ref={fileInputRef}
@@ -154,18 +192,6 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
             )}
           </div>
 
-          <div className="mb-3">
-            <label htmlFor="edit-email" className="form-label">Email</label>
-            <input
-              id="edit-email"
-              type="email"
-              className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-              {...register('email')}
-            />
-            {errors.email && (
-              <div className="invalid-feedback">{errors.email.message}</div>
-            )}
-          </div>
         </Modal.Body>
 
         <Modal.Footer>
