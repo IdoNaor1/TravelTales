@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import apiClient from '../services/apiClient';
 import { authService } from '../services/authService';
-import type { IUser, IRegisterRequest } from '../types';
+import type { IUser, IAuthResponse, IRegisterRequest } from '../types';
 
 interface AuthContextType {
   user: IUser | null;
