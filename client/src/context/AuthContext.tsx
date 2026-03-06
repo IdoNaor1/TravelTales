@@ -8,7 +8,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
-  register: (data: IRegisterRequest) => Promise<void>;
+  register: (data: IRegisterRequest) => Promise<IUser>;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -57,10 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(fullUser);
   }, []);
 
-  const register = useCallback(async (data: IRegisterRequest) => {
+  const register = useCallback(async (data: IRegisterRequest): Promise<IUser> => {
     const authRes = await apiClient.post<IAuthResponse>('/auth/register', data);
     const fullUser = await storeTokensAndFetchUser(authRes);
     setUser(fullUser);
+    return fullUser;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const updated = await fetchUser();
+    setUser(updated);
   }, []);
 
   const logout = useCallback(async () => {
@@ -77,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, register, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   );
