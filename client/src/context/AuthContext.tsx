@@ -1,7 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import apiClient from '../services/apiClient';
-import type { IUser, IAuthResponse, IRegisterRequest } from '../types';
+import { authService } from '../services/authService';
+import type { IUser, IRegisterRequest } from '../types';
 
 interface AuthContextType {
   user: IUser | null;
@@ -47,19 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const authRes = await apiClient.post<IAuthResponse>('/auth/login', { email, password });
+    const authRes = await authService.login({ email, password });
     const fullUser = await storeTokensAndFetchUser(authRes);
     setUser(fullUser);
   }, []);
 
   const googleLogin = useCallback(async (credential: string) => {
-    const authRes = await apiClient.post<IAuthResponse>('/auth/google', { credential });
+    const authRes = await authService.googleLogin(credential);
     const fullUser = await storeTokensAndFetchUser(authRes);
     setUser(fullUser);
   }, []);
 
   const register = useCallback(async (data: IRegisterRequest): Promise<IUser> => {
-    const authRes = await apiClient.post<IAuthResponse>('/auth/register', data);
+    const authRes = await authService.register(data);
     const fullUser = await storeTokensAndFetchUser(authRes);
     setUser(fullUser);
     return fullUser;
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshToken = localStorage.getItem('refreshToken');
     try {
       if (refreshToken) {
-        await apiClient.post('/auth/logout', { refreshToken });
+        await authService.logout(refreshToken);
       }
     } finally {
       localStorage.removeItem('accessToken');
