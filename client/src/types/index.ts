@@ -41,7 +41,20 @@ export interface IPost {
   _id: string;
   title: string;
   content: string;
-  sender: string;
+  image?: string;
+  sender: {
+    _id: string;
+    username: string;
+    profilePicture?: string;
+  };
+  likes: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ILikeResponse {
+  likesCount: number;
+  isLikedByUser: boolean;
 }
 
 export interface ICreatePostRequest {
