@@ -17,7 +17,7 @@ const generateTokens = (userId: string) => {
   const jti = crypto.randomBytes(16).toString("hex");
 
   const accessToken = jwt.sign({ _id: userId, jti }, jwtSecret, {
-    expiresIn: "5s",
+    expiresIn: "15m",
   });
 
   const refreshToken = jwt.sign({ _id: userId, jti }, jwtRefreshSecret, {
