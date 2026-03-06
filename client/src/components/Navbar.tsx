@@ -13,6 +13,7 @@ function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(true);
+  const [imgError, setImgError] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -78,12 +79,13 @@ function Navbar() {
                     className="nav-link d-flex align-items-center gap-2"
                     onClick={closeNav}
                   >
-                    {user.profilePicture ? (
+                    {user.profilePicture && !imgError ? (
                       <img
                         src={getAvatarSrc(user.profilePicture)}
                         alt={user.username}
                         className="rounded-circle"
                         style={{ width: 32, height: 32, objectFit: 'cover' }}
+                        onError={() => setImgError(true)}
                       />
                     ) : (
                       <div
