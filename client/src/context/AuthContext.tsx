@@ -1,13 +1,16 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import apiClient from '../services/apiClient';
+import { authService } from '../services/authService';
 import type { IUser, IAuthResponse, IRegisterRequest } from '../types';
 
 interface AuthContextType {
   user: IUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: IRegisterRequest) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
+  register: (data: IRegisterRequest) => Promise<IUser>;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -45,22 +48,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const authRes = await apiClient.post<IAuthResponse>('/auth/login', { email, password });
+    const authRes = await authService.login({ email, password });
     const fullUser = await storeTokensAndFetchUser(authRes);
     setUser(fullUser);
   }, []);
 
-  const register = useCallback(async (data: IRegisterRequest) => {
-    const authRes = await apiClient.post<IAuthResponse>('/auth/register', data);
+  const googleLogin = useCallback(async (credential: string) => {
+    const authRes = await authService.googleLogin(credential);
     const fullUser = await storeTokensAndFetchUser(authRes);
     setUser(fullUser);
+  }, []);
+
+  const register = useCallback(async (data: IRegisterRequest): Promise<IUser> => {
+    const authRes = await authService.register(data);
+    const fullUser = await storeTokensAndFetchUser(authRes);
+    setUser(fullUser);
+    return fullUser;
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const updated = await fetchUser();
+    setUser(updated);
   }, []);
 
   const logout = useCallback(async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     try {
       if (refreshToken) {
-        await apiClient.post('/auth/logout', { refreshToken });
+        await authService.logout(refreshToken);
       }
     } finally {
       localStorage.removeItem('accessToken');
@@ -70,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, register, refreshUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

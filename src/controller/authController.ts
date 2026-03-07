@@ -260,6 +260,9 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
         refreshTokens: [],
       });
       await user.save();
+    } else if (picture && !user.profilePicture) {
+      // Existing user without a picture — backfill from Google
+      user.profilePicture = picture;
     }
 
     const { accessToken, refreshToken } = generateTokens(user._id.toString());
