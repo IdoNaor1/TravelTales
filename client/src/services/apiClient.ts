@@ -106,6 +106,37 @@ async function request<T>(
   return res.json();
 }
 
+async function requestUpload<T>(url: string, formData: FormData, isRetry = false): Promise<T> {
+  const token = localStorage.getItem('accessToken');
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}${url}`, { method: 'POST', headers, body: formData });
+
+  if (res.status === 401 && !isRetry) {
+    try {
+      await refreshAccessToken();
+      return requestUpload<T>(url, formData, true);
+    } catch {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+      throw new Error('Session expired');
+    }
+  }
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(errorBody.message || res.statusText), {
+      status: res.status,
+      body: errorBody,
+    });
+  }
+
+  return res.json();
+}
+
 const apiClient = {
   get<T>(url: string): Promise<T> {
     return request<T>(url, { method: 'GET' });
@@ -127,6 +158,10 @@ const apiClient = {
 
   delete<T>(url: string): Promise<T> {
     return request<T>(url, { method: 'DELETE' });
+  },
+
+  upload<T>(url: string, formData: FormData): Promise<T> {
+    return requestUpload<T>(url, formData);
   },
 };
 
