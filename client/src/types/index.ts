@@ -41,17 +41,24 @@ export interface IPost {
   _id: string;
   title: string;
   content: string;
-  sender: string;
+  sender: string | IUser;
+  image?: string;
+  likes: string[];
+  commentCount?: number;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ICreatePostRequest {
   title: string;
   content: string;
+  image?: string;
 }
 
 export interface IUpdatePostRequest {
   title?: string;
   content?: string;
+  image?: string;
 }
 
 // Comment types
