@@ -83,7 +83,9 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
             className="d-flex align-items-center text-decoration-none text-dark"
           >
             <img
-              src={resolveMediaUrl(sender?.profilePicture) || "/default-avatar.png"}
+              src={
+                resolveMediaUrl(sender?.profilePicture) || "/default-avatar.png"
+              }
               alt={sender?.username || "User"}
               className="rounded-circle me-2 object-fit-cover"
               style={{ width: 32, height: 32 }}

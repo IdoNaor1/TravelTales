@@ -67,7 +67,7 @@ export interface IComment {
   _id: string;
   postId: string;
   content: string;
-  author: string;
+  author: string | IUser;
   createdAt: string;
 }
 
