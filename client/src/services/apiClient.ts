@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 let isRefreshing = false;
 let refreshQueue: Array<{
@@ -18,24 +18,24 @@ const processQueue = (error: Error | null) => {
 };
 
 async function refreshAccessToken(): Promise<void> {
-  const refreshToken = localStorage.getItem('refreshToken');
+  const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) {
-    throw new Error('No refresh token available');
+    throw new Error("No refresh token available");
   }
 
   const res = await fetch(`${BASE_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
   });
 
   if (!res.ok) {
-    throw new Error('Token refresh failed');
+    throw new Error("Token refresh failed");
   }
 
   const data = await res.json();
-  localStorage.setItem('accessToken', data.token);
-  localStorage.setItem('refreshToken', data.refreshToken);
+  localStorage.setItem("accessToken", data.token);
+  localStorage.setItem("refreshToken", data.refreshToken);
 }
 
 async function handleUnauthorized<T>(
@@ -60,10 +60,10 @@ async function handleUnauthorized<T>(
     return await request<T>(url, options, true);
   } catch (error) {
     processQueue(error as Error);
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
     throw error;
   } finally {
     isRefreshing = false;
@@ -75,15 +75,18 @@ async function request<T>(
   options: RequestInit = {},
   isRetry = false,
 ): Promise<T> {
-  const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem("accessToken");
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // Skip Content-Type for FormData — browser sets it with the multipart boundary
+    ...(options.body instanceof FormData
+      ? {}
+      : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string>),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${BASE_URL}${url}`, {
@@ -91,7 +94,7 @@ async function request<T>(
     headers,
   });
 
-  if (res.status === 401 && !isRetry && !url.startsWith('/auth/')) {
+  if (res.status === 401 && !isRetry && !url.startsWith("/auth/")) {
     return handleUnauthorized<T>(url, options);
   }
 
@@ -108,25 +111,30 @@ async function request<T>(
 
 const apiClient = {
   get<T>(url: string): Promise<T> {
-    return request<T>(url, { method: 'GET' });
+    return request<T>(url, { method: "GET" });
   },
 
   post<T>(url: string, body?: unknown): Promise<T> {
     return request<T>(url, {
-      method: 'POST',
+      method: "POST",
       body: body != null ? JSON.stringify(body) : undefined,
     });
   },
 
   put<T>(url: string, body?: unknown): Promise<T> {
     return request<T>(url, {
-      method: 'PUT',
+      method: "PUT",
       body: body != null ? JSON.stringify(body) : undefined,
     });
   },
 
   delete<T>(url: string): Promise<T> {
-    return request<T>(url, { method: 'DELETE' });
+    return request<T>(url, { method: "DELETE" });
+  },
+
+  /** Upload FormData (image, etc.). Does NOT set Content-Type so the browser adds the multipart boundary. */
+  postForm<T>(url: string, formData: FormData): Promise<T> {
+    return request<T>(url, { method: "POST", body: formData });
   },
 };
 
