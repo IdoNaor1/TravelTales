@@ -1,4 +1,5 @@
 import postsModel from "../model/postsModel";
+import commentsModel from "../model/commentsModel";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/authMiddleware";
 
@@ -112,6 +113,7 @@ const deletePostById = async (req: AuthRequest, res: Response) => {
     }
 
     const deletedPost = await postsModel.findByIdAndDelete(id);
+    await commentsModel.deleteMany({ postId: id });
     res.status(200).json(deletedPost);
   } catch (error) {
     console.error(error);

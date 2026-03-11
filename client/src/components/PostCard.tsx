@@ -68,7 +68,7 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
     post.content.length > 150 ? post.content.slice(0, 150) + "…" : post.content;
 
   return (
-    <div className="card h-100 shadow-sm border-0 post-card">
+    <div className="card shadow-sm border-0 post-card">
       {post.image && (
         <Link to={`/post/${post._id}`} tabIndex={-1}>
           <img
