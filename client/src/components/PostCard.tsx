@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FaHeart, FaRegHeart, FaComment } from "react-icons/fa";
 import type { IPost, IUser } from "../types";
 import postService from "../services/postService";
+import { resolveMediaUrl } from "../services/fileService";
 
 interface PostCardProps {
   post: IPost;
@@ -66,7 +67,7 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
       {post.image && (
         <Link to={`/post/${post._id}`} tabIndex={-1}>
           <img
-            src={post.image}
+            src={resolveMediaUrl(post.image)}
             className="card-img-top"
             alt={post.title}
             style={{ height: 200, objectFit: "cover" }}
@@ -82,7 +83,7 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
             className="d-flex align-items-center text-decoration-none text-dark"
           >
             <img
-              src={sender?.profilePicture || "/default-avatar.png"}
+              src={resolveMediaUrl(sender?.profilePicture) || "/default-avatar.png"}
               alt={sender?.username || "User"}
               className="rounded-circle me-2 object-fit-cover"
               style={{ width: 32, height: 32 }}
