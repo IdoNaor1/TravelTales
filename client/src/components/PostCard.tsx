@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaHeart, FaRegHeart, FaComment } from "react-icons/fa";
 import type { IPost, IUser } from "../types";
 import postService from "../services/postService";
@@ -23,6 +23,7 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 export default function PostCard({ post, currentUserId }: PostCardProps) {
+  const navigate = useNavigate();
   const sender =
     typeof post.sender === "object" ? (post.sender as IUser) : null;
   const senderId =
@@ -37,7 +38,11 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isLiking || !currentUserId) return;
+    if (!currentUserId) {
+      navigate("/login");
+      return;
+    }
+    if (isLiking) return;
 
     // Optimistic update
     const prevLiked = isLiked;
@@ -113,7 +118,7 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
           <button
             className={`btn btn-sm p-0 border-0 d-flex align-items-center gap-1 ${isLiked ? "text-danger" : "text-muted"}`}
             onClick={handleLike}
-            disabled={!currentUserId || isLiking}
+            disabled={isLiking}
             aria-label={isLiked ? "Unlike post" : "Like post"}
           >
             {isLiked ? <FaHeart /> : <FaRegHeart />}

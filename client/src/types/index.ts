@@ -49,6 +49,11 @@ export interface IPost {
   updatedAt?: string;
 }
 
+export interface ILikeResponse {
+  likesCount: number;
+  isLikedByUser: boolean;
+}
+
 export interface ICreatePostRequest {
   title: string;
   content: string;
