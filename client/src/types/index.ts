@@ -41,15 +41,12 @@ export interface IPost {
   _id: string;
   title: string;
   content: string;
+  sender: string | IUser;
   image?: string;
-  sender: {
-    _id: string;
-    username: string;
-    profilePicture?: string;
-  };
   likes: string[];
+  commentCount?: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface ILikeResponse {
@@ -60,11 +57,13 @@ export interface ILikeResponse {
 export interface ICreatePostRequest {
   title: string;
   content: string;
+  image?: string;
 }
 
 export interface IUpdatePostRequest {
   title?: string;
   content?: string;
+  image?: string;
 }
 
 // Comment types
@@ -73,7 +72,7 @@ export interface IComment {
   _id: string;
   postId: string;
   content: string;
-  author: string;
+  author: string | IUser;
   createdAt: string;
 }
 

@@ -1,19 +1,19 @@
-import { useState } from 'react';
-import { Card, Button } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
-import { FaHeart, FaRegHeart, FaComment } from 'react-icons/fa';
-import type { IPost } from '../types';
-import postsService from '../services/postsService';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { FaHeart, FaRegHeart, FaComment } from "react-icons/fa";
+import type { IPost, IUser } from "../types";
+import postService from "../services/postService";
+import { resolveMediaUrl } from "../services/fileService";
 
 interface PostCardProps {
   post: IPost;
   currentUserId?: string;
 }
 
-function formatRelativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'just now';
+function formatTimeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -24,108 +24,116 @@ function formatRelativeTime(dateStr: string): string {
 
 export default function PostCard({ post, currentUserId }: PostCardProps) {
   const navigate = useNavigate();
-  const [liked, setLiked] = useState(() => post.likes.includes(currentUserId ?? ''));
-  const [likeCount, setLikeCount] = useState(post.likes.length);
+  const sender =
+    typeof post.sender === "object" ? (post.sender as IUser) : null;
+  const senderId =
+    typeof post.sender === "string" ? post.sender : (post.sender as IUser)._id;
+
+  const [likesCount, setLikesCount] = useState(post.likes?.length ?? 0);
+  const [isLiked, setIsLiked] = useState(
+    currentUserId ? (post.likes ?? []).includes(currentUserId) : false,
+  );
   const [isLiking, setIsLiking] = useState(false);
 
-  const { sender } = post;
-
-  const handleLike = async () => {
+  const handleLike = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!currentUserId) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
     if (isLiking) return;
 
+    // Optimistic update
+    const prevLiked = isLiked;
+    const prevCount = likesCount;
+    setIsLiked(!prevLiked);
+    setLikesCount(prevLiked ? prevCount - 1 : prevCount + 1);
     setIsLiking(true);
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount((c) => (wasLiked ? c - 1 : c + 1));
 
     try {
-      const res = await postsService.toggleLike(post._id);
-      setLiked(res.isLikedByUser);
-      setLikeCount(res.likesCount);
+      const result = await postService.toggleLike(post._id);
+      setLikesCount(result.likesCount);
+      setIsLiked(result.isLikedByUser);
     } catch {
-      setLiked(wasLiked);
-      setLikeCount((c) => (wasLiked ? c + 1 : c - 1));
+      // Revert on error
+      setIsLiked(prevLiked);
+      setLikesCount(prevCount);
     } finally {
       setIsLiking(false);
     }
   };
 
   const contentPreview =
-    post.content.length > 150 ? post.content.slice(0, 150) + '…' : post.content;
+    post.content.length > 150 ? post.content.slice(0, 150) + "…" : post.content;
 
   return (
-    <Card className="mb-3 shadow-sm">
-      <Card.Header className="bg-white border-0 d-flex align-items-center gap-2 pb-0">
-        <Link
-          to={`/profile/${sender._id}`}
-          className="d-flex align-items-center gap-2 text-decoration-none text-dark"
-        >
-          {sender.profilePicture ? (
-            <img
-              src={sender.profilePicture}
-              alt={sender.username}
-              width={36}
-              height={36}
-              className="rounded-circle object-fit-cover"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = 'none';
-                (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
-              }}
-            />
-          ) : null}
-          <span
-            className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold"
-            style={{
-              width: 36,
-              height: 36,
-              fontSize: 14,
-              display: sender.profilePicture ? 'none' : 'flex',
-              flexShrink: 0,
-            }}
-          >
-            {sender.username.charAt(0).toUpperCase()}
-          </span>
-          <strong>{sender.username}</strong>
-        </Link>
-        <small className="text-muted ms-auto">{formatRelativeTime(post.createdAt)}</small>
-      </Card.Header>
-
+    <div className="card shadow-sm border-0 post-card">
       {post.image && (
-        <Card.Img
-          variant="top"
-          src={post.image}
-          alt={post.title}
-          className="mt-2"
-          style={{ maxHeight: 400, objectFit: 'cover' }}
-        />
+        <Link to={`/post/${post._id}`} tabIndex={-1}>
+          <img
+            src={resolveMediaUrl(post.image)}
+            className="card-img-top"
+            alt={post.title}
+            style={{ height: 200, objectFit: "cover" }}
+          />
+        </Link>
       )}
 
-      <Card.Body>
-        <Card.Title>{post.title}</Card.Title>
-        <Card.Text className="text-muted">{contentPreview}</Card.Text>
-      </Card.Body>
+      <div className="card-body d-flex flex-column p-3">
+        {/* Author row */}
+        <div className="d-flex align-items-center mb-2">
+          <Link
+            to={`/profile/${senderId}`}
+            className="d-flex align-items-center text-decoration-none text-dark"
+          >
+            <img
+              src={
+                resolveMediaUrl(sender?.profilePicture) || "/default-avatar.png"
+              }
+              alt={sender?.username || "User"}
+              className="rounded-circle me-2 object-fit-cover"
+              style={{ width: 32, height: 32 }}
+            />
+            <span className="fw-semibold small">
+              {sender?.username || "Unknown"}
+            </span>
+          </Link>
+          <span className="text-muted small ms-auto">
+            {post.createdAt ? formatTimeAgo(post.createdAt) : ""}
+          </span>
+        </div>
 
-      <Card.Footer className="bg-light d-flex align-items-center gap-3">
-        <Button
-          variant="link"
-          className="p-0 text-decoration-none d-flex align-items-center gap-1"
-          style={{ color: liked ? '#dc3545' : '#6c757d' }}
-          onClick={handleLike}
-          disabled={isLiking}
-          aria-label={liked ? 'Unlike post' : 'Like post'}
+        {/* Title & content preview */}
+        <Link
+          to={`/post/${post._id}`}
+          className="text-decoration-none text-dark flex-grow-1"
         >
-          {liked ? <FaHeart /> : <FaRegHeart />}
-          <span>{likeCount}</span>
-        </Button>
-        <span className="d-flex align-items-center gap-1 text-muted">
-          <FaComment />
-          <span>0</span>
-        </span>
-      </Card.Footer>
-    </Card>
+          <h6 className="card-title fw-bold mb-1">{post.title}</h6>
+          <p className="card-text text-muted small mb-0">{contentPreview}</p>
+        </Link>
+
+        {/* Like & comment footer */}
+        <div className="d-flex align-items-center gap-3 pt-2 mt-2 border-top">
+          <button
+            className={`btn btn-sm p-0 border-0 d-flex align-items-center gap-1 ${isLiked ? "text-danger" : "text-muted"}`}
+            onClick={handleLike}
+            disabled={isLiking}
+            aria-label={isLiked ? "Unlike post" : "Like post"}
+          >
+            {isLiked ? <FaHeart /> : <FaRegHeart />}
+            <span className="small">{likesCount}</span>
+          </button>
+
+          <Link
+            to={`/post/${post._id}`}
+            className="d-flex align-items-center gap-1 text-muted text-decoration-none small"
+          >
+            <FaComment />
+            <span>{post.commentCount ?? 0}</span>
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
