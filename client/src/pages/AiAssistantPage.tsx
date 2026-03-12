@@ -1,8 +1,15 @@
-import { useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router-dom";
-import { FaRobot, FaUser, FaPaperPlane } from "react-icons/fa";
+import { FaRobot, FaUser, FaPaperPlane, FaTrash } from "react-icons/fa";
 import aiService from "../services/aiService";
 import type { IAISource } from "../services/aiService";
+import { useAuth } from "../context/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,14 +26,14 @@ interface IMessage {
 // Handles: **bold**, *italic*, `code`, bullet lists, numbered lists, paragraphs
 // ---------------------------------------------------------------------------
 
-function renderMarkdown(text: string): JSX.Element {
+function renderMarkdown(text: string): ReactElement {
   const lines = text.split("\n");
-  const elements: JSX.Element[] = [];
+  const elements: ReactElement[] = [];
   let key = 0;
 
-  const parseInline = (line: string): (string | JSX.Element)[] => {
+  const parseInline = (line: string): ReactNode[] => {
     // Process **bold**, *italic*, `code` inline
-    const parts: (string | JSX.Element)[] = [];
+    const parts: ReactNode[] = [];
     const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
     let last = 0;
     let m: RegExpExecArray | null;
@@ -61,7 +68,7 @@ function renderMarkdown(text: string): JSX.Element {
 
     // Bullet list item
     if (/^[-*]\s+/.test(line)) {
-      const items: JSX.Element[] = [];
+      const items: ReactElement[] = [];
       while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
         items.push(
           <li key={key++}>{parseInline(lines[i].replace(/^[-*]\s+/, ""))}</li>,
@@ -78,7 +85,7 @@ function renderMarkdown(text: string): JSX.Element {
 
     // Numbered list item
     if (/^\d+\.\s+/.test(line)) {
-      const items: JSX.Element[] = [];
+      const items: ReactElement[] = [];
       while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
         items.push(
           <li key={key++}>{parseInline(lines[i].replace(/^\d+\.\s+/, ""))}</li>,
@@ -131,11 +138,33 @@ const MIN_QUESTION_LENGTH = 3;
 // ---------------------------------------------------------------------------
 
 function AiAssistantPage() {
+  const { user } = useAuth();
+  const storageKey = user ? `ai_chat_${user._id}` : null;
+
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<IMessage[]>([]);
+  const [messages, setMessages] = useState<IMessage[]>(() => {
+    if (!storageKey) return [];
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? (JSON.parse(saved) as IMessage[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    if (!storageKey) return;
+    localStorage.setItem(storageKey, JSON.stringify(messages));
+  }, [messages, storageKey]);
+
+  const handleClearChat = () => {
+    setMessages([]);
+    if (storageKey) localStorage.removeItem(storageKey);
+  };
 
   // Client-side validation mirrors backend rules
   const validationError =
@@ -193,9 +222,20 @@ function AiAssistantPage() {
   return (
     <div className="container py-4" style={{ maxWidth: 800 }}>
       {/* Header */}
-      <div className="d-flex align-items-center gap-2 mb-1">
-        <FaRobot size={28} className="text-primary" />
-        <h2 className="fw-bold mb-0">AI Travel Assistant</h2>
+      <div className="d-flex align-items-center justify-content-between mb-1">
+        <div className="d-flex align-items-center gap-2">
+          <FaRobot size={28} className="text-primary" />
+          <h2 className="fw-bold mb-0">AI Travel Assistant</h2>
+        </div>
+        {messages.length > 0 && (
+          <button
+            className="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1"
+            onClick={handleClearChat}
+            title="Clear chat history"
+          >
+            <FaTrash size={12} /> Clear chat
+          </button>
+        )}
       </div>
       <p className="text-muted mb-4">
         Ask me anything about travel destinations — I'll answer based on the
