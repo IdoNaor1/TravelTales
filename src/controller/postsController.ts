@@ -2,6 +2,10 @@ import postsModel from "../model/postsModel";
 import commentsModel from "../model/commentsModel";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/authMiddleware";
+import {
+  generateAndStoreEmbeddings,
+  deleteEmbeddingsForPost,
+} from "../services/embeddingService";
 
 const createPost = async (req: AuthRequest, res: Response) => {
   try {
@@ -18,6 +22,12 @@ const createPost = async (req: AuthRequest, res: Response) => {
       sender: req.userId,
     });
     await newPost.save();
+
+    // Generate embeddings asynchronously — don't block the response
+    generateAndStoreEmbeddings(newPost._id.toString()).catch((err) =>
+      console.error("Error generating embeddings for new post:", err),
+    );
+
     res.status(201).json(newPost);
   } catch (error) {
     console.error(error);
@@ -91,6 +101,14 @@ const updatePostById = async (req: AuthRequest, res: Response) => {
     const updatedPost = await postsModel.findByIdAndUpdate(id, updateData, {
       new: true,
     });
+
+    // Re-embed if title or content changed — run async, don't block response
+    if (updateData.title || updateData.content) {
+      generateAndStoreEmbeddings(id).catch((err) =>
+        console.error("Error re-generating embeddings for updated post:", err),
+      );
+    }
+
     res.status(200).json(updatedPost);
   } catch (error) {
     console.error(error);
@@ -114,6 +132,12 @@ const deletePostById = async (req: AuthRequest, res: Response) => {
 
     const deletedPost = await postsModel.findByIdAndDelete(id);
     await commentsModel.deleteMany({ postId: id });
+
+    // Clean up embeddings asynchronously
+    deleteEmbeddingsForPost(id).catch((err) =>
+      console.error("Error deleting embeddings for post:", err),
+    );
+
     res.status(200).json(deletedPost);
   } catch (error) {
     console.error(error);

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { FiUploadCloud, FiX } from "react-icons/fi";
-import { uploadFile } from "../services/fileService";
+import { uploadFile, resolveMediaUrl } from "../services/fileService";
 import postService from "../services/postService";
 import type { IPost } from "../types";
 
@@ -47,7 +47,7 @@ export default function PostForm({ initialPost, onSuccess }: PostFormProps) {
   // Image state — separate from RHF because it's a File, not a plain value
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(
-    initialPost?.image ?? null,
+    initialPost?.image ? resolveMediaUrl(initialPost.image) ?? null : null,
   );
   const [imageError, setImageError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export default function PostForm({ initialPost, onSuccess }: PostFormProps) {
 
   const clearImage = () => {
     setImageFile(null);
-    setPreview(isEdit ? (initialPost?.image ?? null) : null);
+    setPreview(isEdit ? (resolveMediaUrl(initialPost?.image) ?? null) : null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 

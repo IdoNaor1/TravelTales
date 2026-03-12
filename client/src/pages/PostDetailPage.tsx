@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import postService from "../services/postService";
 import commentService from "../services/commentService";
 import { resolveMediaUrl } from "../services/fileService";
+import Avatar from "../components/Avatar";
 import type { IComment, IPost, IUser } from "../types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -34,23 +35,52 @@ function CommentItem({
   comment,
   currentUserId,
   onDelete,
+  onEdit,
 }: {
   comment: IComment;
   currentUserId?: string;
   onDelete: (id: string) => void;
+  onEdit: (id: string, newContent: string) => void;
 }) {
   const author = asUser(comment.author);
   const authorId = asId(comment.author);
   const isOwner = currentUserId === authorId;
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const trimmed = editContent.trim();
+    if (!trimmed || trimmed === comment.content) {
+      setIsEditing(false);
+      setEditContent(comment.content);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onEdit(comment._id, trimmed);
+      setIsEditing(false);
+    } catch {
+      /* keep editing open on failure */
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditContent(comment.content);
+    setIsEditing(false);
+  };
+
   return (
     <div className="d-flex gap-3 py-3 border-bottom">
       <Link to={`/profile/${authorId}`} tabIndex={-1}>
-        <img
-          src={resolveMediaUrl(author?.profilePicture) || "/default-avatar.png"}
-          alt={author?.username || "User"}
-          className="rounded-circle object-fit-cover flex-shrink-0"
-          style={{ width: 36, height: 36 }}
+        <Avatar
+          src={author?.profilePicture}
+          username={author?.username || "User"}
+          size={36}
+          className="flex-shrink-0"
         />
       </Link>
       <div className="flex-grow-1">
@@ -65,19 +95,57 @@ function CommentItem({
             <span className="text-muted" style={{ fontSize: "0.75rem" }}>
               {formatTimeAgo(comment.createdAt)}
             </span>
-            {isOwner && (
-              <button
-                className="btn btn-sm btn-link text-danger p-0"
-                onClick={() => onDelete(comment._id)}
-                aria-label="Delete comment"
-                style={{ fontSize: "0.75rem" }}
-              >
-                Delete
-              </button>
+            {isOwner && !isEditing && (
+              <>
+                <button
+                  className="btn btn-sm btn-link text-primary p-0"
+                  onClick={() => setIsEditing(true)}
+                  aria-label="Edit comment"
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="btn btn-sm btn-link text-danger p-0"
+                  onClick={() => onDelete(comment._id)}
+                  aria-label="Delete comment"
+                  style={{ fontSize: "0.75rem" }}
+                >
+                  Delete
+                </button>
+              </>
             )}
           </div>
         </div>
-        <p className="mb-0 small">{comment.content}</p>
+        {isEditing ? (
+          <div>
+            <textarea
+              className="form-control form-control-sm mb-2"
+              rows={2}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              maxLength={1000}
+            />
+            <div className="d-flex gap-2">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSave}
+                disabled={saving || !editContent.trim()}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                onClick={handleCancel}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="mb-0 small">{comment.content}</p>
+        )}
       </div>
     </div>
   );
@@ -188,6 +256,13 @@ function PostDetailPage() {
     }
   };
 
+  const handleCommentEdit = async (commentId: string, newContent: string) => {
+    const updated = await commentService.update(commentId, newContent);
+    setComments((prev) =>
+      prev.map((c) => (c._id === commentId ? { ...c, content: updated.content } : c)),
+    );
+  };
+
   // ── Loading / error states ──────────────────────────────────────────────────
 
   if (postLoading) {
@@ -244,13 +319,10 @@ function PostDetailPage() {
           to={`/profile/${senderId}`}
           className="d-flex align-items-center gap-2 text-decoration-none text-dark"
         >
-          <img
-            src={
-              resolveMediaUrl(sender?.profilePicture) || "/default-avatar.png"
-            }
-            alt={sender?.username || "User"}
-            className="rounded-circle object-fit-cover"
-            style={{ width: 42, height: 42 }}
+          <Avatar
+            src={sender?.profilePicture}
+            username={sender?.username || "User"}
+            size={42}
           />
           <div>
             <div className="fw-semibold">{sender?.username || "Unknown"}</div>
@@ -321,6 +393,7 @@ function PostDetailPage() {
               comment={c}
               currentUserId={user?._id}
               onDelete={handleCommentDelete}
+              onEdit={handleCommentEdit}
             />
           ))}
         </div>
@@ -330,13 +403,11 @@ function PostDetailPage() {
       {user ? (
         <form onSubmit={handleCommentSubmit} className="mt-3">
           <div className="d-flex gap-3">
-            <img
-              src={
-                resolveMediaUrl(user.profilePicture) || "/default-avatar.png"
-              }
-              alt={user.username}
-              className="rounded-circle object-fit-cover flex-shrink-0"
-              style={{ width: 36, height: 36 }}
+            <Avatar
+              src={user.profilePicture}
+              username={user.username}
+              size={36}
+              className="flex-shrink-0"
             />
             <div className="flex-grow-1">
               <textarea

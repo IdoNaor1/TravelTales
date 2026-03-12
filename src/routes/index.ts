@@ -4,6 +4,7 @@ import commentsRouter from "./comments";
 import authRouter from "./auth";
 import usersRouter from "./users";
 import fileUploadRouter from "./fileUpload";
+import aiRouter from "./ai";
 
 const router = express.Router();
 
@@ -12,5 +13,6 @@ router.use('/comments', commentsRouter);
 router.use('/auth', authRouter);
 router.use('/users', usersRouter);
 router.use('/file', fileUploadRouter);
+router.use('/ai', aiRouter);
 
 export default router;

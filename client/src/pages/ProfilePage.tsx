@@ -6,14 +6,8 @@ import userService from '../services/userService';
 import postsService from '../services/postsService';
 import PostCard from '../components/PostCard';
 import EditProfileModal from '../components/EditProfileModal';
+import Avatar from '../components/Avatar';
 import type { IUser, IPost } from '../types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-function getAvatarSrc(pic: string): string {
-  if (pic.startsWith('/')) return `${API_URL}${pic}`;
-  return pic;
-}
 
 export default function ProfilePage() {
   const { userId } = useParams<{ userId: string }>();
@@ -24,7 +18,6 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState<IPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [imgError, setImgError] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
@@ -68,23 +61,12 @@ export default function ProfilePage() {
         <Col lg={8}>
           <Card className="mb-4 shadow-sm">
             <Card.Body className="text-center py-4">
-              {profileUser.profilePicture && !imgError ? (
-                <img
-                  src={getAvatarSrc(profileUser.profilePicture)}
-                  alt={profileUser.username}
-                  width={120}
-                  height={120}
-                  className="rounded-circle object-fit-cover mb-3"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div
-                  className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold mx-auto mb-3"
-                  style={{ width: 120, height: 120, fontSize: 48 }}
-                >
-                  {profileUser.username.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <Avatar
+                src={profileUser.profilePicture}
+                username={profileUser.username}
+                size={120}
+                className="mb-3 mx-auto"
+              />
               <h3 className="mb-1">{profileUser.username}</h3>
               <p className="text-muted mb-3">{profileUser.email}</p>
               {isOwnProfile && (
