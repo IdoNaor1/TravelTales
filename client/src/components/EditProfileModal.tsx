@@ -7,14 +7,8 @@ import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/apiClient';
 import userService from '../services/userService';
+import Avatar from './Avatar';
 import type { IUser } from '../types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-function getAvatarSrc(pic: string): string {
-  if (pic.startsWith('/')) return `${API_URL}${pic}`;
-  return pic;
-}
 
 const schema = z.object({
   username: z.string().min(2, 'Username must be at least 2 characters'),
@@ -33,7 +27,6 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
-  const [imgError, setImgError] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,12 +54,8 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const hasPhoto = !removePhoto && (selectedFile != null || (!!user.profilePicture && !imgError));
-  const currentAvatarSrc = selectedFile
-    ? previewUrl
-    : !removePhoto && user.profilePicture && !imgError
-      ? getAvatarSrc(user.profilePicture)
-      : null;
+  const hasPhoto = !removePhoto && (selectedFile != null || !!user.profilePicture);
+  const showPreviewImg = selectedFile && previewUrl;
 
   const onSubmit = async (data: FormData) => {
     setApiError(null);
@@ -97,7 +86,6 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
     setSelectedFile(null);
     setPreviewUrl(null);
     setRemovePhoto(false);
-    setImgError(false);
     setApiError(null);
     onHide();
   };
@@ -124,13 +112,18 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
                 style={{ cursor: 'pointer' }}
                 title="Click to change photo"
               >
-                {currentAvatarSrc ? (
+                {showPreviewImg ? (
                   <img
-                    src={currentAvatarSrc}
+                    src={previewUrl}
                     alt="Profile"
                     className="rounded-circle"
                     style={{ width: 96, height: 96, objectFit: 'cover', border: '2px solid #dee2e6' }}
-                    onError={() => setImgError(true)}
+                  />
+                ) : !removePhoto ? (
+                  <Avatar
+                    src={user.profilePicture}
+                    username={user.username}
+                    size={96}
                   />
                 ) : (
                   <div

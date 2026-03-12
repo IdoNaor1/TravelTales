@@ -1,19 +1,12 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-
-function getAvatarSrc(pic: string): string {
-  if (pic.startsWith('/')) return `${API_URL}${pic}`;
-  return pic;
-}
+import Avatar from './Avatar';
 
 function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(true);
-  const [imgError, setImgError] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -79,22 +72,7 @@ function Navbar() {
                     className="nav-link d-flex align-items-center gap-2"
                     onClick={closeNav}
                   >
-                    {user.profilePicture && !imgError ? (
-                      <img
-                        src={getAvatarSrc(user.profilePicture)}
-                        alt={user.username}
-                        className="rounded-circle"
-                        style={{ width: 32, height: 32, objectFit: 'cover' }}
-                        onError={() => setImgError(true)}
-                      />
-                    ) : (
-                      <div
-                        className="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center"
-                        style={{ width: 32, height: 32, fontSize: 14, fontWeight: 600 }}
-                      >
-                        {user.username[0].toUpperCase()}
-                      </div>
-                    )}
+                    <Avatar src={user.profilePicture} username={user.username} size={32} />
                     <span>{user.username}</span>
                   </Link>
                 </li>

@@ -4,6 +4,7 @@ import { FaHeart, FaRegHeart, FaComment } from "react-icons/fa";
 import type { IPost, IUser } from "../types";
 import postService from "../services/postService";
 import { resolveMediaUrl } from "../services/fileService";
+import Avatar from "./Avatar";
 
 interface PostCardProps {
   post: IPost;
@@ -87,13 +88,11 @@ export default function PostCard({ post, currentUserId }: PostCardProps) {
             to={`/profile/${senderId}`}
             className="d-flex align-items-center text-decoration-none text-dark"
           >
-            <img
-              src={
-                resolveMediaUrl(sender?.profilePicture) || "/default-avatar.png"
-              }
-              alt={sender?.username || "User"}
-              className="rounded-circle me-2 object-fit-cover"
-              style={{ width: 32, height: 32 }}
+            <Avatar
+              src={sender?.profilePicture}
+              username={sender?.username || "User"}
+              size={32}
+              className="me-2"
             />
             <span className="fw-semibold small">
               {sender?.username || "Unknown"}
