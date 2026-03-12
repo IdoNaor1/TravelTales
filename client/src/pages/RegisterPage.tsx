@@ -1,22 +1,33 @@
-import { useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const schema = z
   .object({
-    username: z.string().min(2, 'Username must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    username: z
+      .string()
+      .min(2, "Username must be at least 2 characters")
+      .max(20, "Username must be at most 20 characters")
+      .regex(/^\S+$/, "Username must not contain spaces"),
+    email: z
+      .string()
+      .email("Invalid email address")
+      .regex(/^\S+$/, "Email must not contain spaces"),
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters")
+      .max(20, "Password must be at most 20 characters")
+      .regex(/^\S+$/, "Password must not contain spaces"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
   });
 
 type RegisterFormData = z.infer<typeof schema>;
@@ -53,12 +64,12 @@ function RegisterPage() {
 
       if (selectedFile) {
         const formData = new FormData();
-        formData.append('file', selectedFile);
+        formData.append("file", selectedFile);
 
         const uploadRes = await fetch(`${API_URL}/file`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
           },
           body: formData,
         });
@@ -66,10 +77,10 @@ function RegisterPage() {
         if (uploadRes.ok) {
           const { url } = await uploadRes.json();
           await fetch(`${API_URL}/users/${newUser._id}`, {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
             },
             body: JSON.stringify({ profilePicture: url }),
           });
@@ -77,9 +88,13 @@ function RegisterPage() {
         }
       }
 
-      navigate('/');
+      navigate("/");
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      setApiError(
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again.",
+      );
     }
   };
 
@@ -101,19 +116,29 @@ function RegisterPage() {
               <div className="text-center mb-4">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  style={{ cursor: 'pointer', display: 'inline-block' }}
+                  style={{ cursor: "pointer", display: "inline-block" }}
                 >
                   {previewUrl ? (
                     <img
                       src={previewUrl}
                       alt="Profile preview"
                       className="rounded-circle"
-                      style={{ width: 96, height: 96, objectFit: 'cover', border: '2px solid #dee2e6' }}
+                      style={{
+                        width: 96,
+                        height: 96,
+                        objectFit: "cover",
+                        border: "2px solid #dee2e6",
+                      }}
                     />
                   ) : (
                     <div
                       className="rounded-circle d-flex align-items-center justify-content-center bg-light text-secondary"
-                      style={{ width: 96, height: 96, border: '2px dashed #adb5bd', fontSize: 13 }}
+                      style={{
+                        width: 96,
+                        height: 96,
+                        border: "2px dashed #adb5bd",
+                        fontSize: 13,
+                      }}
                     >
                       Add photo
                     </div>
@@ -123,61 +148,77 @@ function RegisterPage() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                   onChange={handleFileChange}
                 />
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 <div className="mb-3">
-                  <label htmlFor="username" className="form-label">Username</label>
+                  <label htmlFor="username" className="form-label">
+                    Username
+                  </label>
                   <input
                     id="username"
                     type="text"
-                    className={`form-control ${errors.username ? 'is-invalid' : ''}`}
-                    {...register('username')}
+                    className={`form-control ${errors.username ? "is-invalid" : ""}`}
+                    {...register("username")}
                   />
                   {errors.username && (
-                    <div className="invalid-feedback">{errors.username.message}</div>
+                    <div className="invalid-feedback">
+                      {errors.username.message}
+                    </div>
                   )}
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email</label>
+                  <label htmlFor="email" className="form-label">
+                    Email
+                  </label>
                   <input
                     id="email"
                     type="email"
-                    className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                    {...register('email')}
+                    className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                    {...register("email")}
                   />
                   {errors.email && (
-                    <div className="invalid-feedback">{errors.email.message}</div>
+                    <div className="invalid-feedback">
+                      {errors.email.message}
+                    </div>
                   )}
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="password" className="form-label">Password</label>
+                  <label htmlFor="password" className="form-label">
+                    Password
+                  </label>
                   <input
                     id="password"
                     type="password"
-                    className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                    {...register('password')}
+                    className={`form-control ${errors.password ? "is-invalid" : ""}`}
+                    {...register("password")}
                   />
                   {errors.password && (
-                    <div className="invalid-feedback">{errors.password.message}</div>
+                    <div className="invalid-feedback">
+                      {errors.password.message}
+                    </div>
                   )}
                 </div>
 
                 <div className="mb-4">
-                  <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+                  <label htmlFor="confirmPassword" className="form-label">
+                    Confirm Password
+                  </label>
                   <input
                     id="confirmPassword"
                     type="password"
-                    className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
-                    {...register('confirmPassword')}
+                    className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
+                    {...register("confirmPassword")}
                   />
                   {errors.confirmPassword && (
-                    <div className="invalid-feedback">{errors.confirmPassword.message}</div>
+                    <div className="invalid-feedback">
+                      {errors.confirmPassword.message}
+                    </div>
                   )}
                 </div>
 
@@ -188,18 +229,21 @@ function RegisterPage() {
                 >
                   {isSubmitting ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      />
                       Creating account...
                     </>
                   ) : (
-                    'Create Account'
+                    "Create Account"
                   )}
                 </button>
               </form>
 
               <p className="text-center mt-3 mb-0">
-                Already have an account?{' '}
-                <Link to="/login">Sign in</Link>
+                Already have an account? <Link to="/login">Sign in</Link>
               </p>
             </div>
           </div>

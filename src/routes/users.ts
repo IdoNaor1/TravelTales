@@ -1,6 +1,21 @@
 import express from "express";
-import { getAllUsers, getCurrentUser, getUserById, updateUser, deleteUser } from "../controller/userController";
+import {
+  getAllUsers,
+  getCurrentUser,
+  getUserById,
+  updateUser,
+  deleteUser,
+} from "../controller/userController";
 import { authMiddleware } from "../middleware/authMiddleware";
+import {
+  validate,
+  isEmail,
+  isString,
+  isMongoId,
+  minLength,
+  maxLength,
+  noSpaces,
+} from "../middleware/validate";
 
 const router = express.Router();
 
@@ -77,7 +92,11 @@ router.get("/me", authMiddleware, getCurrentUser);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/:id", getUserById);
+router.get(
+  "/:id",
+  validate({ id: { source: "params", validators: [isMongoId] } }),
+  getUserById,
+);
 
 /**
  * @swagger
@@ -118,7 +137,21 @@ router.get("/:id", getUserById);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.put("/:id", authMiddleware, updateUser);
+router.put(
+  "/:id",
+  authMiddleware,
+  validate({
+    id: { source: "params", validators: [isMongoId] },
+    username: {
+      source: "body",
+      optional: true,
+      validators: [isString, minLength(2), maxLength(20), noSpaces],
+    },
+    email: { source: "body", optional: true, validators: [isEmail, noSpaces] },
+    profilePicture: { source: "body", optional: true, validators: [isString] },
+  }),
+  updateUser,
+);
 
 /**
  * @swagger
@@ -155,6 +188,11 @@ router.put("/:id", authMiddleware, updateUser);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.delete("/:id", authMiddleware, deleteUser);
+router.delete(
+  "/:id",
+  authMiddleware,
+  validate({ id: { source: "params", validators: [isMongoId] } }),
+  deleteUser,
+);
 
 export default router;

@@ -1,14 +1,21 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+import { useAuth } from "../context/AuthContext";
 
 const schema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .regex(/^\S+$/, "Email must not contain spaces"),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .max(20, "Password must be at most 20 characters")
+    .regex(/^\S+$/, "Password must not contain spaces"),
 });
 
 type LoginFormData = z.infer<typeof schema>;
@@ -28,20 +35,24 @@ function LoginPage() {
     setApiError(null);
     try {
       await login(data.email, data.password);
-      navigate('/');
+      navigate("/");
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Invalid email or password');
+      setApiError(
+        err instanceof Error ? err.message : "Invalid email or password",
+      );
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: { credential?: string }) => {
+  const handleGoogleSuccess = async (credentialResponse: {
+    credential?: string;
+  }) => {
     setApiError(null);
     try {
       if (!credentialResponse.credential) return;
       await googleLogin(credentialResponse.credential);
-      navigate('/');
+      navigate("/");
     } catch {
-      setApiError('Google login failed. Please try again.');
+      setApiError("Google login failed. Please try again.");
     }
   };
 
@@ -61,28 +72,36 @@ function LoginPage() {
 
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email</label>
+                  <label htmlFor="email" className="form-label">
+                    Email
+                  </label>
                   <input
                     id="email"
                     type="email"
-                    className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                    {...register('email')}
+                    className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                    {...register("email")}
                   />
                   {errors.email && (
-                    <div className="invalid-feedback">{errors.email.message}</div>
+                    <div className="invalid-feedback">
+                      {errors.email.message}
+                    </div>
                   )}
                 </div>
 
                 <div className="mb-3">
-                  <label htmlFor="password" className="form-label">Password</label>
+                  <label htmlFor="password" className="form-label">
+                    Password
+                  </label>
                   <input
                     id="password"
                     type="password"
-                    className={`form-control ${errors.password ? 'is-invalid' : ''}`}
-                    {...register('password')}
+                    className={`form-control ${errors.password ? "is-invalid" : ""}`}
+                    {...register("password")}
                   />
                   {errors.password && (
-                    <div className="invalid-feedback">{errors.password.message}</div>
+                    <div className="invalid-feedback">
+                      {errors.password.message}
+                    </div>
                   )}
                 </div>
 
@@ -93,11 +112,15 @@ function LoginPage() {
                 >
                   {isSubmitting ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      />
                       Signing in...
                     </>
                   ) : (
-                    'Sign In'
+                    "Sign In"
                   )}
                 </button>
               </form>
@@ -107,13 +130,14 @@ function LoginPage() {
               <div className="d-flex justify-content-center">
                 <GoogleLogin
                   onSuccess={handleGoogleSuccess}
-                  onError={() => setApiError('Google login failed. Please try again.')}
+                  onError={() =>
+                    setApiError("Google login failed. Please try again.")
+                  }
                 />
               </div>
 
               <p className="text-center mt-3 mb-0">
-                Don't have an account?{' '}
-                <Link to="/register">Register</Link>
+                Don't have an account? <Link to="/register">Register</Link>
               </p>
             </div>
           </div>

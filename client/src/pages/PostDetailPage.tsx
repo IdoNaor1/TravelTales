@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FaHeart, FaRegHeart, FaComment } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
@@ -7,6 +10,14 @@ import commentService from "../services/commentService";
 import { resolveMediaUrl } from "../services/fileService";
 import Avatar from "../components/Avatar";
 import type { IComment, IPost, IUser } from "../types";
+
+const commentSchema = z.object({
+  content: z
+    .string()
+    .min(1, "Comment cannot be empty")
+    .max(1000, "Comment must be at most 1000 characters"),
+});
+type CommentFormData = z.infer<typeof commentSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -168,12 +179,14 @@ function PostDetailPage() {
 
   const [comments, setComments] = useState<IComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(true);
-
-  const [newComment, setNewComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
 
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const {
+    register: registerComment,
+    handleSubmit: handleCommentSubmit,
+    reset: resetComment,
+    formState: { errors: commentErrors, isSubmitting: submittingComment },
+  } = useForm<CommentFormData>({ resolver: zodResolver(commentSchema) });
 
   // Load post
   useEffect(() => {
@@ -229,20 +242,15 @@ function PostDetailPage() {
     }
   };
 
-  const handleCommentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const content = newComment.trim();
-    if (!content || !postId) return;
+  const onCommentSubmit = async (data: CommentFormData) => {
+    if (!postId) return;
     setCommentError(null);
-    setSubmittingComment(true);
     try {
-      const created = await commentService.create(postId, content);
+      const created = await commentService.create(postId, data.content);
       setComments((prev) => [...prev, created]);
-      setNewComment("");
+      resetComment();
     } catch {
       setCommentError("Failed to post comment. Please try again.");
-    } finally {
-      setSubmittingComment(false);
     }
   };
 
@@ -259,7 +267,9 @@ function PostDetailPage() {
   const handleCommentEdit = async (commentId: string, newContent: string) => {
     const updated = await commentService.update(commentId, newContent);
     setComments((prev) =>
-      prev.map((c) => (c._id === commentId ? { ...c, content: updated.content } : c)),
+      prev.map((c) =>
+        c._id === commentId ? { ...c, content: updated.content } : c,
+      ),
     );
   };
 
@@ -401,7 +411,11 @@ function PostDetailPage() {
 
       {/* Add comment form */}
       {user ? (
-        <form onSubmit={handleCommentSubmit} className="mt-3">
+        <form
+          onSubmit={handleCommentSubmit(onCommentSubmit)}
+          className="mt-3"
+          noValidate
+        >
           <div className="d-flex gap-3">
             <Avatar
               src={user.profilePicture}
@@ -411,22 +425,23 @@ function PostDetailPage() {
             />
             <div className="flex-grow-1">
               <textarea
-                ref={commentInputRef}
-                className="form-control mb-2"
+                className={`form-control mb-1 ${commentErrors.content ? "is-invalid" : ""}`}
                 rows={2}
                 placeholder="Add a comment…"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                maxLength={1000}
-                required
+                {...registerComment("content")}
               />
+              {commentErrors.content && (
+                <div className="invalid-feedback d-block mb-1">
+                  {commentErrors.content.message}
+                </div>
+              )}
               {commentError && (
                 <div className="text-danger small mb-2">{commentError}</div>
               )}
               <button
                 type="submit"
                 className="btn btn-primary btn-sm"
-                disabled={submittingComment || !newComment.trim()}
+                disabled={submittingComment}
               >
                 {submittingComment ? (
                   <>
