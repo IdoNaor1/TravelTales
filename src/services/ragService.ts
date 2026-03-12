@@ -4,7 +4,7 @@ import { getGenAI, findSimilarChunks } from "./embeddingService";
 // Constants
 // ---------------------------------------------------------------------------
 
-const SIMILARITY_THRESHOLD = 0.3;
+const SIMILARITY_THRESHOLD = 0.6;
 const TOP_K = 5;
 const MAX_CONTEXT_CHARS = 4000;
 const MIN_QUESTION_LENGTH = 3;
