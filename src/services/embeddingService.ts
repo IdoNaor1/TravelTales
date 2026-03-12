@@ -96,12 +96,12 @@ const BASE_DELAY_MS = 1000;
 
 /**
  * Generate a 768-dimensional embedding vector for a piece of text using
- * Google Gemini's `embedding-001` model.
+ * Google Gemini's `gemini-embedding-001` model.
  *
  * Includes simple exponential backoff for transient / rate-limit errors.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const model = getGenAI().getGenerativeModel({ model: "embedding-001" });
+  const model = getGenAI().getGenerativeModel({ model: "gemini-embedding-001" });
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
