@@ -181,6 +181,7 @@ export async function generateAndStoreEmbeddings(
   }));
 
   await Embedding.insertMany(docs);
+
 }
 
 // ---------------------------------------------------------------------------
@@ -248,6 +249,109 @@ export async function findSimilarChunks(
   scored.sort((a, b) => b.score - a.score);
 
   return scored.slice(0, topK);
+}
+
+// ---------------------------------------------------------------------------
+// Hybrid retrieval (vector + text)
+// ---------------------------------------------------------------------------
+
+export async function findSimilarChunksHybrid(
+  queryText: string,
+  topK: number = 5,
+  options?: {
+    vectorTopK?: number;
+    textTopK?: number;
+    vectorWeight?: number;
+    textWeight?: number;
+  },
+): Promise<
+  Array<{
+    chunk: IEmbedding;
+    score: number;
+    vectorScore?: number;
+    textScore?: number;
+  }>
+> {
+  const vectorTopK = options?.vectorTopK ?? topK;
+  const textTopK = options?.textTopK ?? topK;
+  const vectorWeight = options?.vectorWeight ?? 0.7;
+  const textWeight = options?.textWeight ?? 0.3;
+
+  const queryEmbedding = await generateEmbedding(queryText);
+
+  const allEmbeddings = await Embedding.find({});
+  const vectorScored = allEmbeddings.map((emb) => ({
+    chunk: emb,
+    score: cosineSimilarity(queryEmbedding, emb.embedding),
+  }));
+
+  vectorScored.sort((a, b) => b.score - a.score);
+  const vectorTop = vectorScored.slice(0, vectorTopK);
+
+  const textDocs = await Embedding.find(
+    { $text: { $search: queryText } },
+    { score: { $meta: "textScore" } },
+  )
+    .sort({ score: { $meta: "textScore" } })
+    .limit(textTopK);
+
+
+  const textTop = textDocs.map((doc) => ({
+    chunk: doc,
+    score: (doc as unknown as { score?: number }).score ?? 0,
+  }));
+
+  const maxVector = vectorTop.reduce(
+    (max, item) => (item.score > max ? item.score : max),
+    0,
+  );
+  const maxText = textTop.reduce(
+    (max, item) => (item.score > max ? item.score : max),
+    0,
+  );
+
+
+  const merged = new Map<
+    string,
+    {
+      chunk: IEmbedding;
+      vectorScore?: number;
+      textScore?: number;
+    }
+  >();
+
+  for (const item of vectorTop) {
+    merged.set(item.chunk._id.toString(), {
+      chunk: item.chunk,
+      vectorScore: item.score,
+    });
+  }
+
+  for (const item of textTop) {
+    const id = item.chunk._id.toString();
+    const existing = merged.get(id);
+    if (existing) {
+      existing.textScore = item.score;
+    } else {
+      merged.set(id, { chunk: item.chunk, textScore: item.score });
+    }
+  }
+
+  const combined = Array.from(merged.values()).map((item) => {
+    const vectorNorm = maxVector > 0 ? (item.vectorScore ?? 0) / maxVector : 0;
+    const textNorm = maxText > 0 ? (item.textScore ?? 0) / maxText : 0;
+    const score = vectorWeight * vectorNorm + textWeight * textNorm;
+    return {
+      chunk: item.chunk,
+      score,
+      vectorScore: item.vectorScore,
+      textScore: item.textScore,
+    };
+  });
+
+  combined.sort((a, b) => b.score - a.score);
+
+  return combined.slice(0, topK);
 }
 
 // ---------------------------------------------------------------------------

@@ -39,5 +39,10 @@ const embeddingSchema = new mongoose.Schema<IEmbedding>({
 });
 
 embeddingSchema.index({ postId: 1, chunkIndex: 1 }, { unique: true });
+embeddingSchema.index({
+  chunkText: "text",
+  "metadata.title": "text",
+  "metadata.author": "text",
+});
 
 export default mongoose.model<IEmbedding>("Embedding", embeddingSchema);
