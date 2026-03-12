@@ -405,6 +405,49 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        AskAIRequest: {
+          type: 'object',
+          required: ['question'],
+          properties: {
+            question: {
+              type: 'string',
+              description: 'Travel-related question to ask the AI assistant (3-500 characters)',
+              example: 'What are the best places to visit in Greece?',
+            },
+          },
+        },
+        AskAISource: {
+          type: 'object',
+          properties: {
+            postId: {
+              type: 'string',
+              description: 'ID of the source post',
+              example: '507f1f77bcf86cd799439012',
+            },
+            title: {
+              type: 'string',
+              description: 'Title of the source post',
+              example: 'Sunset in Santorini',
+            },
+          },
+        },
+        AskAIResponse: {
+          type: 'object',
+          properties: {
+            answer: {
+              type: 'string',
+              description: 'AI-generated answer based on travel post content',
+              example: 'Based on posts from TravelTales users, Greece offers many amazing destinations...',
+            },
+            sources: {
+              type: 'array',
+              description: 'Travel posts used as context for the answer',
+              items: {
+                $ref: '#/components/schemas/AskAISource',
+              },
+            },
+          },
+        },
       },
       responses: {
         BadRequest: {
@@ -482,6 +525,10 @@ const options: swaggerJsdoc.Options = {
       {
         name: 'Files',
         description: 'Image upload — stores files in /public and returns a URL',
+      },
+      {
+        name: 'AI',
+        description: 'AI-powered travel assistant — ask questions answered via RAG over all travel posts',
       },
     ],
   },

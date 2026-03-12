@@ -8,7 +8,7 @@ import Post from "../model/postsModel";
 
 let genAI: GoogleGenerativeAI | null = null;
 
-function getGenAI(): GoogleGenerativeAI {
+export function getGenAI(): GoogleGenerativeAI {
   if (!genAI) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
