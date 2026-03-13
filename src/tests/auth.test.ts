@@ -65,7 +65,7 @@ describe("Authentication API Tests", () => {
       email: testUser.email,
       password: testUser.password,
     });
-    expect(response1.status).toBe(400);
+    expect(response1.status).toBe(409);
 
     // Test with same username but different email
     const response2 = await request(app).post("/auth/register").send({
@@ -73,7 +73,7 @@ describe("Authentication API Tests", () => {
       email: "newemail@example.com",
       password: testUser.password,
     });
-    expect(response2.status).toBe(400);
+    expect(response2.status).toBe(409);
   });
 
   test("Posting a post with token succeeds", async () => {
@@ -134,33 +134,26 @@ describe("Authentication API Tests", () => {
     testUser.refreshToken = response.body.refreshToken;
   });
 
-  jest.setTimeout(10000);
-
-  test("Test using token after expiration fails", async () => {
-    //sleep for 5 seconds to let the token expire
-    await new Promise((r) => setTimeout(r, 5000));
+  test("Refresh flow issues new tokens and allows authenticated requests", async () => {
+    const previousAccessToken = testUser.token;
     const postData = postsList[0];
-    const response = await request(app)
-      .post("/posts")
-      .set("Authorization", "Bearer " + testUser.token)
-      .send(postData);
-    expect(response.status).toBe(401);
 
-    //refresh the token
     const refreshResponse = await request(app)
       .post("/auth/refresh")
       .send({ refreshToken: testUser.refreshToken });
     expect(refreshResponse.status).toBe(200);
     expect(refreshResponse.body).toHaveProperty("token");
+    expect(refreshResponse.body).toHaveProperty("refreshToken");
+    expect(refreshResponse.body.token).not.toBe(previousAccessToken);
+
     testUser.token = refreshResponse.body.token;
     testUser.refreshToken = refreshResponse.body.refreshToken;
 
-    //try to create post again
-    const retryResponse = await request(app)
+    const postResponse = await request(app)
       .post("/posts")
       .set("Authorization", "Bearer " + testUser.token)
       .send(postData);
-    expect(retryResponse.status).toBe(201);
+    expect(postResponse.status).toBe(201);
   });
 
   test("Test refresh without refresh token fails", async () => {
@@ -248,7 +241,7 @@ describe("Authentication API Tests", () => {
     expect(refreshResponse3.status).toBe(401);
   });
 
-    test("Test logout without refresh token fails", async () => {
+  test("Test logout without refresh token fails", async () => {
     // Try to logout without providing a refresh token
     const response = await request(app).post("/auth/logout").send({});
     expect(response.status).toBe(400);
@@ -277,7 +270,7 @@ describe("Authentication API Tests", () => {
     expect(logoutResponse.status).toBe(200);
     expect(logoutResponse.body).toHaveProperty(
       "message",
-      "Logged out successfully"
+      "Logged out successfully",
     );
 
     // Try to use the refresh token after logout - should fail

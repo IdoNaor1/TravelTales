@@ -2,7 +2,13 @@ import request from "supertest";
 import initApp from "../app";
 import postsModel from "../model/postsModel";
 import { Express } from "express";
-import {postsList, UserData, PostsData, getLogedInUser, createOtherUserPost} from "./utils";
+import {
+  postsList,
+  UserData,
+  PostsData,
+  getLogedInUser,
+  createOtherUserPost,
+} from "./utils";
 
 let app: Express;
 let postId = "";
@@ -30,6 +36,22 @@ describe("Posts API Tests", () => {
     const post = postsList[0];
     const response = await request(app).post("/posts").send(post);
     expect(response.status).toBe(401);
+  });
+
+  test("Create post without title returns 400", async () => {
+    const response = await request(app)
+      .post("/posts")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ content: "Content without a title" });
+    expect(response.status).toBe(400);
+  });
+
+  test("Create post without content returns 400", async () => {
+    const response = await request(app)
+      .post("/posts")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ title: "Title without content" });
+    expect(response.status).toBe(400);
   });
 
   test("Create Post", async () => {
@@ -69,7 +91,7 @@ describe("Posts API Tests", () => {
 
   test("Get Posts by Sender", async () => {
     const response = await request(app).get(
-      "/posts?sender=" + loggedInUser._id
+      "/posts?sender=" + loggedInUser._id,
     );
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(postsList.length - 1);
@@ -171,7 +193,11 @@ describe("Post Image Field", () => {
     const response = await request(app)
       .post("/posts")
       .set("Authorization", "Bearer " + loggedInUser.token)
-      .send({ title: "Travel to Paris", content: "Amazing trip!", image: "/public/paris.jpg" });
+      .send({
+        title: "Travel to Paris",
+        content: "Amazing trip!",
+        image: "/public/paris.jpg",
+      });
     expect(response.status).toBe(201);
     expect(response.body.image).toBe("/public/paris.jpg");
     imagePostId = response.body._id;
@@ -296,12 +322,17 @@ describe("Post Pagination", () => {
   });
 
   test("Pagination respects sender filter", async () => {
-    const response = await request(app)
-      .get("/posts?sender=" + loggedInUser._id + "&limit=2");
+    const response = await request(app).get(
+      "/posts?sender=" + loggedInUser._id + "&limit=2",
+    );
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(2);
     expect(
-      response.body.posts.every((p: { sender: string }) => p.sender === loggedInUser._id)
+      response.body.posts.every(
+        (p: { sender: string | { _id: string } }) =>
+          (typeof p.sender === "string" ? p.sender : p.sender._id) ===
+          loggedInUser._id,
+      ),
     ).toBe(true);
   });
 });

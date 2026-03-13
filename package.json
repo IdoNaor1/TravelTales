@@ -10,7 +10,9 @@
     "testPosts": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/posts.test.ts",
     "testComments": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/comments.test.ts",
     "testAuth": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/auth.test.ts",
-    "testUsers": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/users.test.ts"
+    "testUsers": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/users.test.ts",
+    "testAi": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/ai.test.ts",
+    "testUpload": "tsc && jest --runInBand --detectOpenHandles --forceExit ./src/tests/fileUpload.test.ts"
   },
   "keywords": [],
   "author": "",

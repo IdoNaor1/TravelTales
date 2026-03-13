@@ -20,7 +20,7 @@ describe("Users API tests", () => {
     const response = await request(app).get("/users/me");
     expect(response.status).toBe(401);
   });
-  
+
   test("Create User", async () => {
     for (const user of usersList) {
       const response = await request(app).post("/auth/register").send({
@@ -73,12 +73,15 @@ describe("Users API tests", () => {
     expect(response.body.email).toBe("new-email@example.com");
   });
 
-  test("Update Non-Existent User Fails", async () => {
+  test("Update another/non-self user ID returns 403", async () => {
     const response = await request(app)
       .put("/users/" + nonexistentUser._id)
       .set("Authorization", "Bearer " + loggedInUser.token)
-      .send({ username: nonexistentUser.username, email: nonexistentUser.email });
-    expect(response.status).toBe(404);
+      .send({
+        username: nonexistentUser.username,
+        email: nonexistentUser.email,
+      });
+    expect(response.status).toBe(403);
   });
 
   test("Delete Non-Existent User Fails", async () => {
@@ -98,5 +101,91 @@ describe("Users API tests", () => {
       .get("/users/" + loggedInUser._id)
       .set("Authorization", "Bearer " + loggedInUser.token);
     expect(getResponse.status).toBe(404);
+  });
+});
+
+describe("Users - Edge Cases", () => {
+  type EdgeUser = {
+    _id: string;
+    token: string;
+    username: string;
+    email: string;
+  };
+  let userA: EdgeUser;
+  let userB: EdgeUser;
+
+  beforeAll(async () => {
+    const respA = await request(app).post("/auth/register").send({
+      username: "edgeusera",
+      email: "edgeusera@example.com",
+      password: "password123",
+    });
+    userA = {
+      _id: respA.body._id,
+      token: respA.body.token,
+      username: "edgeusera",
+      email: "edgeusera@example.com",
+    };
+
+    const respB = await request(app).post("/auth/register").send({
+      username: "edgeuserb",
+      email: "edgeuserb@example.com",
+      password: "password123",
+    });
+    userB = {
+      _id: respB.body._id,
+      token: respB.body.token,
+      username: "edgeuserb",
+      email: "edgeuserb@example.com",
+    };
+  });
+
+  test("Get user by non-existent ID returns 404", async () => {
+    const response = await request(app).get("/users/000000000000000000000000");
+    expect(response.status).toBe(404);
+  });
+
+  test("Update user without auth token returns 401", async () => {
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .send({ username: "hacker" });
+    expect(response.status).toBe(401);
+  });
+
+  test("Update another user's profile returns 403", async () => {
+    // userA tries to update userB's profile
+    const response = await request(app)
+      .put("/users/" + userB._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ username: "stolen" });
+    expect(response.status).toBe(403);
+  });
+
+  test("Update user with a username already taken by another user returns 409", async () => {
+    // userA tries to take userB's username
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ username: userB.username });
+    expect(response.status).toBe(409);
+  });
+
+  test("Update user with an email already used by another user returns 409", async () => {
+    // userA tries to take userB's email
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ email: userB.email });
+    expect(response.status).toBe(409);
+  });
+
+  test("Update user profile picture returns 200 with the new picture URL", async () => {
+    const newPicture = "/public/avatar-updated.jpg";
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ profilePicture: newPicture });
+    expect(response.status).toBe(200);
+    expect(response.body.profilePicture).toBe(newPicture);
   });
 });
