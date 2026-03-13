@@ -11,10 +11,12 @@ function CreatePostPage() {
 
   return (
     <div className="container py-4" style={{ maxWidth: 720 }}>
-      <h2 className="fw-bold mb-1">Share Your Journey</h2>
-      <p className="text-muted mb-4">
-        Tell the community about your travel experience
-      </p>
+      <div className="travel-page-header">
+        <h2 className="fw-bold mb-1">Share Your Journey</h2>
+        <p className="text-muted mb-4">
+          Tell the community about your travel experience
+        </p>
+      </div>
       <PostForm onSuccess={handleSuccess} />
     </div>
   );

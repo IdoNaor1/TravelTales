@@ -54,8 +54,10 @@ function EditPostPage() {
 
   return (
     <div className="container py-4" style={{ maxWidth: 720 }}>
-      <h2 className="fw-bold mb-1">Edit Post</h2>
-      <p className="text-muted mb-4">Update your travel story</p>
+      <div className="travel-page-header">
+        <h2 className="fw-bold mb-1">Edit Post</h2>
+        <p className="text-muted mb-4">Update your travel story</p>
+      </div>
       <PostForm initialPost={post} onSuccess={handleSuccess} />
     </div>
   );

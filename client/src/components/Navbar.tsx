@@ -1,16 +1,23 @@
-import { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import Avatar from './Avatar';
+import { useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import Avatar from "./Avatar";
 
 function Navbar() {
   const { user, logout } = useAuth();
+  const { success, error } = useToast();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(true);
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+    try {
+      await logout();
+      success("Logged out successfully.");
+      navigate("/login");
+    } catch {
+      error("Failed to log out. Please try again.");
+    }
   };
 
   const closeNav = () => setCollapsed(true);
@@ -31,13 +38,15 @@ function Navbar() {
           <span className="navbar-toggler-icon" />
         </button>
 
-        <div className={`collapse navbar-collapse${collapsed ? '' : ' show'}`}>
+        <div className={`collapse navbar-collapse${collapsed ? "" : " show"}`}>
           <ul className="navbar-nav me-auto mb-2 mb-md-0">
             <li className="nav-item">
               <NavLink
                 to="/"
                 end
-                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                className={({ isActive }) =>
+                  `nav-link${isActive ? " active" : ""}`
+                }
                 onClick={closeNav}
               >
                 Home
@@ -60,7 +69,9 @@ function Navbar() {
                 <li className="nav-item">
                   <NavLink
                     to="/ai"
-                    className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                    className={({ isActive }) =>
+                      `nav-link${isActive ? " active" : ""}`
+                    }
                     onClick={closeNav}
                   >
                     AI Assistant
@@ -72,7 +83,11 @@ function Navbar() {
                     className="nav-link d-flex align-items-center gap-2"
                     onClick={closeNav}
                   >
-                    <Avatar src={user.profilePicture} username={user.username} size={32} />
+                    <Avatar
+                      src={user.profilePicture}
+                      username={user.username}
+                      size={32}
+                    />
                     <span>{user.username}</span>
                   </Link>
                 </li>
@@ -90,7 +105,9 @@ function Navbar() {
                 <li className="nav-item">
                   <NavLink
                     to="/login"
-                    className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                    className={({ isActive }) =>
+                      `nav-link${isActive ? " active" : ""}`
+                    }
                     onClick={closeNav}
                   >
                     Login

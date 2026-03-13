@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 const schema = z.object({
   email: z
@@ -22,6 +23,7 @@ type LoginFormData = z.infer<typeof schema>;
 
 function LoginPage() {
   const { login, googleLogin } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -35,11 +37,13 @@ function LoginPage() {
     setApiError(null);
     try {
       await login(data.email, data.password);
+      toast.success("Welcome back!");
       navigate("/");
     } catch (err) {
-      setApiError(
-        err instanceof Error ? err.message : "Invalid email or password",
-      );
+      const message =
+        err instanceof Error ? err.message : "Invalid email or password";
+      setApiError(message);
+      toast.error(message);
     }
   };
 
@@ -50,9 +54,11 @@ function LoginPage() {
     try {
       if (!credentialResponse.credential) return;
       await googleLogin(credentialResponse.credential);
+      toast.success("Signed in with Google.");
       navigate("/");
     } catch {
       setApiError("Google login failed. Please try again.");
+      toast.error("Google login failed. Please try again.");
     }
   };
 

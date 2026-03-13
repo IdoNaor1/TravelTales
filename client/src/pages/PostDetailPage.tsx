@@ -9,6 +9,7 @@ import postService from "../services/postService";
 import commentService from "../services/commentService";
 import { resolveMediaUrl } from "../services/fileService";
 import Avatar from "../components/Avatar";
+import { useToast } from "../context/ToastContext";
 import type { IComment, IPost, IUser } from "../types";
 
 const commentSchema = z.object({
@@ -168,6 +169,7 @@ function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [post, setPost] = useState<IPost | null>(null);
   const [postLoading, setPostLoading] = useState(true);
@@ -236,9 +238,10 @@ function PostDetailPage() {
     if (!post || !window.confirm("Delete this post?")) return;
     try {
       await postService.deletePost(post._id);
+      toast.success("Post deleted.");
       navigate("/");
     } catch {
-      alert("Failed to delete post.");
+      toast.error("Failed to delete post.");
     }
   };
 
@@ -249,8 +252,10 @@ function PostDetailPage() {
       const created = await commentService.create(postId, data.content);
       setComments((prev) => [...prev, created]);
       resetComment();
+      toast.success("Comment posted.");
     } catch {
       setCommentError("Failed to post comment. Please try again.");
+      toast.error("Failed to post comment. Please try again.");
     }
   };
 
@@ -259,18 +264,25 @@ function PostDetailPage() {
     try {
       await commentService.remove(commentId);
       setComments((prev) => prev.filter((c) => c._id !== commentId));
+      toast.info("Comment deleted.");
     } catch {
-      alert("Failed to delete comment.");
+      toast.error("Failed to delete comment.");
     }
   };
 
   const handleCommentEdit = async (commentId: string, newContent: string) => {
-    const updated = await commentService.update(commentId, newContent);
-    setComments((prev) =>
-      prev.map((c) =>
-        c._id === commentId ? { ...c, content: updated.content } : c,
-      ),
-    );
+    try {
+      const updated = await commentService.update(commentId, newContent);
+      setComments((prev) =>
+        prev.map((c) =>
+          c._id === commentId ? { ...c, content: updated.content } : c,
+        ),
+      );
+      toast.success("Comment updated.");
+    } catch {
+      toast.error("Failed to update comment.");
+      throw new Error("Comment update failed");
+    }
   };
 
   // ── Loading / error states ──────────────────────────────────────────────────
