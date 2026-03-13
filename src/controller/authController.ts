@@ -41,7 +41,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (existingUser) {
-      res.status(400).json({ message: "User already exists" });
+      if (existingUser.username === username) {
+        res.status(409).json({ message: "Username is already taken" });
+        return;
+      }
+      if (existingUser.email === email) {
+        res.status(409).json({ message: "Email is already registered" });
+        return;
+      }
+      res.status(409).json({ message: "User already exists" });
       return;
     }
 
@@ -57,7 +65,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const savedUser = await user.save();
 
-    const { accessToken, refreshToken } = generateTokens(savedUser._id.toString());
+    const { accessToken, refreshToken } = generateTokens(
+      savedUser._id.toString(),
+    );
 
     savedUser.refreshTokens = [refreshToken];
     await savedUser.save();
@@ -70,6 +80,26 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       refreshToken: refreshToken,
     });
   } catch (error) {
+    // Defensive handling for DB-level unique index races
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: number }).code === 11000
+    ) {
+      const keyPattern = (error as { keyPattern?: Record<string, number> })
+        .keyPattern;
+      if (keyPattern?.username) {
+        res.status(409).json({ message: "Username is already taken" });
+        return;
+      }
+      if (keyPattern?.email) {
+        res.status(409).json({ message: "Email is already registered" });
+        return;
+      }
+      res.status(409).json({ message: "User already exists" });
+      return;
+    }
     res.status(500).json({ message: "Error registering user", error });
   }
 };
@@ -133,14 +163,16 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     try {
       decoded = jwt.verify(refreshToken, jwtRefreshSecret) as { _id: string };
     } catch (error) {
-      res.status(401).json({ message: "Invalid or expired refresh token", error });
+      res
+        .status(401)
+        .json({ message: "Invalid or expired refresh token", error });
       return;
     }
 
     const user = await User.findOneAndUpdate(
       { _id: decoded._id, refreshTokens: refreshToken },
       { $pull: { refreshTokens: refreshToken } },
-      { new: false }
+      { new: false },
     );
 
     if (!user) {
@@ -149,10 +181,8 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const {
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    } = generateTokens(user._id.toString());
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
+      generateTokens(user._id.toString());
 
     await User.findByIdAndUpdate(user._id, {
       $push: { refreshTokens: newRefreshToken },
@@ -186,7 +216,9 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     try {
       decoded = jwt.verify(refreshToken, jwtRefreshSecret) as { _id: string };
     } catch (error) {
-      res.status(401).json({ message: "Invalid or expired refresh token", error });
+      res
+        .status(401)
+        .json({ message: "Invalid or expired refresh token", error });
       return;
     }
 
@@ -198,7 +230,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
     // Remove the refresh token
     user.refreshTokens = user.refreshTokens.filter(
-      (token) => token !== refreshToken
+      (token) => token !== refreshToken,
     );
     await user.save();
 
@@ -208,7 +240,10 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const googleLogin = async (req: Request, res: Response): Promise<void> => {
+export const googleLogin = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { credential } = req.body;
 
@@ -279,6 +314,8 @@ export const googleLogin = async (req: Request, res: Response): Promise<void> =>
       refreshToken,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error authenticating with Google", error });
+    res
+      .status(500)
+      .json({ message: "Error authenticating with Google", error });
   }
 };
