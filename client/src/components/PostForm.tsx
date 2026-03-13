@@ -5,6 +5,7 @@ import { z } from "zod";
 import { FiUploadCloud, FiX } from "react-icons/fi";
 import { uploadFile, resolveMediaUrl } from "../services/fileService";
 import postService from "../services/postService";
+import { useToast } from "../context/ToastContext";
 import type { IPost } from "../types";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -31,6 +32,7 @@ interface PostFormProps {
 
 export default function PostForm({ initialPost, onSuccess }: PostFormProps) {
   const isEdit = !!initialPost;
+  const toast = useToast();
 
   const {
     register,
@@ -47,7 +49,7 @@ export default function PostForm({ initialPost, onSuccess }: PostFormProps) {
   // Image state — separate from RHF because it's a File, not a plain value
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(
-    initialPost?.image ? resolveMediaUrl(initialPost.image) ?? null : null,
+    initialPost?.image ? (resolveMediaUrl(initialPost.image) ?? null) : null,
   );
   const [imageError, setImageError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -100,10 +102,14 @@ export default function PostForm({ initialPost, onSuccess }: PostFormProps) {
           })
         : await postService.createPost({ ...values, image: imageUrl });
 
+      toast.success(
+        isEdit ? "Post updated successfully." : "Post published successfully.",
+      );
       onSuccess(post);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong.";
       setSubmitError(msg);
+      toast.error(msg);
     }
   };
 

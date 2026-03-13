@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -34,6 +35,7 @@ type RegisterFormData = z.infer<typeof schema>;
 
 function RegisterPage() {
   const { register: registerUser, refreshUser } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [apiError, setApiError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -88,13 +90,15 @@ function RegisterPage() {
         }
       }
 
+      toast.success("Account created successfully.");
       navigate("/");
     } catch (err) {
-      setApiError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Registration failed. Please try again.",
-      );
+          : "Registration failed. Please try again.";
+      setApiError(message);
+      toast.error(message);
     }
   };
 

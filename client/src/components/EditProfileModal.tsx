@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import apiClient from "../services/apiClient";
 import userService from "../services/userService";
 import Avatar from "./Avatar";
@@ -32,6 +33,7 @@ export default function EditProfileModal({
   user,
 }: EditProfileModalProps) {
   const { refreshUser } = useAuth();
+  const toast = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [removePhoto, setRemovePhoto] = useState(false);
@@ -88,11 +90,13 @@ export default function EditProfileModal({
         ...(profilePicture !== undefined && { profilePicture }),
       });
       await refreshUser();
+      toast.success("Profile updated successfully.");
       onHide();
     } catch (err) {
-      setApiError(
-        err instanceof Error ? err.message : "Update failed. Please try again.",
-      );
+      const message =
+        err instanceof Error ? err.message : "Update failed. Please try again.";
+      setApiError(message);
+      toast.error(message);
     }
   };
 

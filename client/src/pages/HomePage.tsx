@@ -11,7 +11,7 @@ function HomePage() {
   return (
     <div className="container py-4" style={{ maxWidth: 900 }}>
       {/* Page header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="travel-page-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
           <h2 className="fw-bold mb-0">Travel Feed</h2>
           <p className="text-muted small mb-0">
@@ -58,7 +58,7 @@ function HomePage() {
 
       {/* Post grid */}
       {!isLoading && posts.length === 0 && !error && (
-        <div className="text-center py-5 text-muted">
+        <div className="empty-state text-center text-muted">
           <p className="fs-5">No posts yet.</p>
           {user ? (
             <Link to="/create" className="btn btn-outline-primary">
