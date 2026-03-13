@@ -1,17 +1,21 @@
-import { useRef, useState } from 'react';
-import { FaTrash } from 'react-icons/fa';
-import { Modal, Button } from 'react-bootstrap';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useAuth } from '../context/AuthContext';
-import apiClient from '../services/apiClient';
-import userService from '../services/userService';
-import Avatar from './Avatar';
-import type { IUser } from '../types';
+import { useRef, useState } from "react";
+import { FaTrash } from "react-icons/fa";
+import { Modal, Button } from "react-bootstrap";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuth } from "../context/AuthContext";
+import apiClient from "../services/apiClient";
+import userService from "../services/userService";
+import Avatar from "./Avatar";
+import type { IUser } from "../types";
 
 const schema = z.object({
-  username: z.string().min(2, 'Username must be at least 2 characters'),
+  username: z
+    .string()
+    .min(2, "Username must be at least 2 characters")
+    .max(20, "Username must be at most 20 characters")
+    .regex(/^\S+$/, "Username must not contain spaces"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -22,7 +26,11 @@ interface EditProfileModalProps {
   user: IUser;
 }
 
-export default function EditProfileModal({ show, onHide, user }: EditProfileModalProps) {
+export default function EditProfileModal({
+  show,
+  onHide,
+  user,
+}: EditProfileModalProps) {
   const { refreshUser } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -51,10 +59,11 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
     setSelectedFile(null);
     setPreviewUrl(null);
     setRemovePhoto(true);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const hasPhoto = !removePhoto && (selectedFile != null || !!user.profilePicture);
+  const hasPhoto =
+    !removePhoto && (selectedFile != null || !!user.profilePicture);
   const showPreviewImg = selectedFile && previewUrl;
 
   const onSubmit = async (data: FormData) => {
@@ -64,11 +73,14 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
 
       if (selectedFile) {
         const formData = new FormData();
-        formData.append('file', selectedFile);
-        const { url } = await apiClient.upload<{ url: string }>('/file', formData);
+        formData.append("file", selectedFile);
+        const { url } = await apiClient.upload<{ url: string }>(
+          "/file",
+          formData,
+        );
         profilePicture = url;
       } else if (removePhoto) {
-        profilePicture = '';
+        profilePicture = "";
       }
 
       await userService.updateUser(user._id, {
@@ -78,7 +90,9 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
       await refreshUser();
       onHide();
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Update failed. Please try again.');
+      setApiError(
+        err instanceof Error ? err.message : "Update failed. Please try again.",
+      );
     }
   };
 
@@ -106,10 +120,10 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
 
           {/* Avatar picker */}
           <div className="text-center mb-4">
-            <div style={{ display: 'inline-block', position: 'relative' }}>
+            <div style={{ display: "inline-block", position: "relative" }}>
               <div
                 onClick={() => fileInputRef.current?.click()}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: "pointer" }}
                 title="Click to change photo"
               >
                 {showPreviewImg ? (
@@ -117,7 +131,12 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
                     src={previewUrl}
                     alt="Profile"
                     className="rounded-circle"
-                    style={{ width: 96, height: 96, objectFit: 'cover', border: '2px solid #dee2e6' }}
+                    style={{
+                      width: 96,
+                      height: 96,
+                      objectFit: "cover",
+                      border: "2px solid #dee2e6",
+                    }}
                   />
                 ) : !removePhoto ? (
                   <Avatar
@@ -140,19 +159,19 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
                   onClick={handleRemovePhoto}
                   title="Remove photo"
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     bottom: 0,
                     right: 0,
                     width: 26,
                     height: 26,
-                    borderRadius: '50%',
-                    border: 'none',
-                    background: '#dc3545',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "#dc3545",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
                     padding: 0,
                   }}
                 >
@@ -161,44 +180,53 @@ export default function EditProfileModal({ show, onHide, user }: EditProfileModa
               )}
             </div>
             <div className="text-muted mt-1" style={{ fontSize: 12 }}>
-              {hasPhoto ? 'Click to change' : 'Add photo'}
+              {hasPhoto ? "Click to change" : "Add photo"}
             </div>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
               onChange={handleFileChange}
             />
           </div>
 
           <div className="mb-3">
-            <label htmlFor="edit-username" className="form-label">Username</label>
+            <label htmlFor="edit-username" className="form-label">
+              Username
+            </label>
             <input
               id="edit-username"
               type="text"
-              className={`form-control ${errors.username ? 'is-invalid' : ''}`}
-              {...register('username')}
+              className={`form-control ${errors.username ? "is-invalid" : ""}`}
+              {...register("username")}
             />
             {errors.username && (
               <div className="invalid-feedback">{errors.username.message}</div>
             )}
           </div>
-
         </Modal.Body>
 
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>
+          <Button
+            variant="secondary"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                <span
+                  className="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                />
                 Saving...
               </>
             ) : (
-              'Save Changes'
+              "Save Changes"
             )}
           </Button>
         </Modal.Footer>

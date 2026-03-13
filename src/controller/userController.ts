@@ -5,7 +5,7 @@ import { AuthRequest } from "../middleware/authMiddleware";
 // Get all users (public route)
 export const getAllUsers = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const users = await User.find().select("-password -refreshTokens");
@@ -17,7 +17,7 @@ export const getAllUsers = async (
 
 export const getCurrentUser = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     if (!req.userId) {
@@ -25,7 +25,9 @@ export const getCurrentUser = async (
       return;
     }
 
-    const user = await User.findById(req.userId).select("-password -refreshTokens");
+    const user = await User.findById(req.userId).select(
+      "-password -refreshTokens",
+    );
 
     if (!user) {
       res.status(404).json({ message: "User not found" });
@@ -40,7 +42,7 @@ export const getCurrentUser = async (
 
 export const getUserById = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -60,16 +62,50 @@ export const getUserById = async (
 
 export const updateUser = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
     const { username, email, profilePicture } = req.body;
 
-    const updateData: Partial<{ username: string; email: string; profilePicture: string }> = {};
+    if (!req.userId || req.userId !== id) {
+      res
+        .status(403)
+        .json({ message: "Forbidden: You can only update your own profile" });
+      return;
+    }
+
+    if (username) {
+      const existingUsername = await User.findOne({
+        username,
+        _id: { $ne: id },
+      });
+      if (existingUsername) {
+        res.status(409).json({ message: "Username is already taken" });
+        return;
+      }
+    }
+
+    if (email) {
+      const existingEmail = await User.findOne({
+        email,
+        _id: { $ne: id },
+      });
+      if (existingEmail) {
+        res.status(409).json({ message: "Email is already registered" });
+        return;
+      }
+    }
+
+    const updateData: Partial<{
+      username: string;
+      email: string;
+      profilePicture: string;
+    }> = {};
     if (username) updateData.username = username;
     if (email) updateData.email = email;
-    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+    if (profilePicture !== undefined)
+      updateData.profilePicture = profilePicture;
 
     const updatedUser = await User.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -82,13 +118,33 @@ export const updateUser = async (
 
     res.status(200).json(updatedUser);
   } catch (error) {
+    // Defensive handling for DB-level unique index races
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: number }).code === 11000
+    ) {
+      const keyPattern = (error as { keyPattern?: Record<string, number> })
+        .keyPattern;
+      if (keyPattern?.username) {
+        res.status(409).json({ message: "Username is already taken" });
+        return;
+      }
+      if (keyPattern?.email) {
+        res.status(409).json({ message: "Email is already registered" });
+        return;
+      }
+      res.status(409).json({ message: "User already exists" });
+      return;
+    }
     res.status(500).json({ message: "Error updating user", error });
   }
 };
 
 export const deleteUser = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;

@@ -1,6 +1,13 @@
-import express from "express"
+import express from "express";
 import postsController from "../controller/postsController";
 import { authMiddleware } from "../middleware/authMiddleware";
+import {
+  validate,
+  isString,
+  isMongoId,
+  minLength,
+  maxLength,
+} from "../middleware/validate";
 
 const router = express.Router();
 
@@ -73,9 +80,24 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.route('/')
-    .post(authMiddleware, postsController.createPost)
-    .get(postsController.getAllPosts);
+router
+  .route("/")
+  .post(
+    authMiddleware,
+    validate({
+      title: {
+        source: "body",
+        validators: [isString, minLength(1), maxLength(200)],
+      },
+      content: {
+        source: "body",
+        validators: [isString, minLength(1), maxLength(5000)],
+      },
+      image: { source: "body", optional: true, validators: [isString] },
+    }),
+    postsController.createPost,
+  )
+  .get(postsController.getAllPosts);
 
 /**
  * @swagger
@@ -169,10 +191,35 @@ router.route('/')
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.route('/:id')
-    .get(postsController.getPostById)
-    .put(authMiddleware, postsController.updatePostById)
-    .delete(authMiddleware, postsController.deletePostById);
+router
+  .route("/:id")
+  .get(
+    validate({ id: { source: "params", validators: [isMongoId] } }),
+    postsController.getPostById,
+  )
+  .put(
+    authMiddleware,
+    validate({
+      id: { source: "params", validators: [isMongoId] },
+      title: {
+        source: "body",
+        optional: true,
+        validators: [isString, minLength(1), maxLength(200)],
+      },
+      content: {
+        source: "body",
+        optional: true,
+        validators: [isString, minLength(1), maxLength(5000)],
+      },
+      image: { source: "body", optional: true, validators: [isString] },
+    }),
+    postsController.updatePostById,
+  )
+  .delete(
+    authMiddleware,
+    validate({ id: { source: "params", validators: [isMongoId] } }),
+    postsController.deletePostById,
+  );
 
 /**
  * @swagger
@@ -211,6 +258,11 @@ router.route('/:id')
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post('/:id/like', authMiddleware, postsController.toggleLike);
+router.post(
+  "/:id/like",
+  authMiddleware,
+  validate({ id: { source: "params", validators: [isMongoId] } }),
+  postsController.toggleLike,
+);
 
 export default router;

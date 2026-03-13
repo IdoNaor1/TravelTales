@@ -1,6 +1,13 @@
-import express from "express"
+import express from "express";
 import commentsController from "../controller/commentsController";
 import { authMiddleware } from "../middleware/authMiddleware";
+import {
+  validate,
+  isString,
+  isMongoId,
+  minLength,
+  maxLength,
+} from "../middleware/validate";
 
 const router = express.Router();
 
@@ -56,9 +63,25 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.route('/')
-    .post(authMiddleware, commentsController.createComment)
-    .get(commentsController.getCommentsByPostId);
+router
+  .route("/")
+  .post(
+    authMiddleware,
+    validate({
+      postId: { source: "body", validators: [isMongoId] },
+      content: {
+        source: "body",
+        validators: [isString, minLength(1), maxLength(1000)],
+      },
+    }),
+    commentsController.createComment,
+  )
+  .get(
+    validate({
+      postId: { source: "query", validators: [isMongoId] },
+    }),
+    commentsController.getCommentsByPostId,
+  );
 
 /**
  * @swagger
@@ -143,9 +166,27 @@ router.route('/')
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.route('/:id')
-    .get(commentsController.getCommentById)
-    .put(authMiddleware, commentsController.updateCommentById)
-    .delete(authMiddleware, commentsController.deleteCommentById);
+router
+  .route("/:id")
+  .get(
+    validate({ id: { source: "params", validators: [isMongoId] } }),
+    commentsController.getCommentById,
+  )
+  .put(
+    authMiddleware,
+    validate({
+      id: { source: "params", validators: [isMongoId] },
+      content: {
+        source: "body",
+        validators: [isString, minLength(1), maxLength(1000)],
+      },
+    }),
+    commentsController.updateCommentById,
+  )
+  .delete(
+    authMiddleware,
+    validate({ id: { source: "params", validators: [isMongoId] } }),
+    commentsController.deleteCommentById,
+  );
 
 export default router;

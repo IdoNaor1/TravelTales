@@ -1,6 +1,12 @@
 import express from "express";
 import aiController from "../controller/aiController";
 import { authMiddleware } from "../middleware/authMiddleware";
+import {
+  validate,
+  isString,
+  minLength,
+  maxLength,
+} from "../middleware/validate";
 
 const router = express.Router();
 
@@ -40,6 +46,16 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/ask", authMiddleware, aiController.askAI);
+router.post(
+  "/ask",
+  authMiddleware,
+  validate({
+    question: {
+      source: "body",
+      validators: [isString, minLength(3), maxLength(500)],
+    },
+  }),
+  aiController.askAI,
+);
 
 export default router;

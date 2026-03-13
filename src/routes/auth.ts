@@ -1,5 +1,19 @@
 import express from "express";
-import { register, login, refresh, logout, googleLogin } from "../controller/authController";
+import {
+  register,
+  login,
+  refresh,
+  logout,
+  googleLogin,
+} from "../controller/authController";
+import {
+  validate,
+  isEmail,
+  isString,
+  minLength,
+  maxLength,
+  noSpaces,
+} from "../middleware/validate";
 
 const router = express.Router();
 
@@ -28,7 +42,21 @@ const router = express.Router();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/register", register);
+router.post(
+  "/register",
+  validate({
+    username: {
+      source: "body",
+      validators: [isString, minLength(2), maxLength(20), noSpaces],
+    },
+    email: { source: "body", validators: [isEmail, noSpaces] },
+    password: {
+      source: "body",
+      validators: [isString, minLength(6), maxLength(20), noSpaces],
+    },
+  }),
+  register,
+);
 
 /**
  * @swagger
@@ -57,7 +85,14 @@ router.post("/register", register);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/login", login);
+router.post(
+  "/login",
+  validate({
+    email: { source: "body", validators: [isEmail] },
+    password: { source: "body", validators: [isString] },
+  }),
+  login,
+);
 
 /**
  * @swagger
@@ -86,7 +121,13 @@ router.post("/login", login);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/refresh", refresh);
+router.post(
+  "/refresh",
+  validate({
+    refreshToken: { source: "body", validators: [isString] },
+  }),
+  refresh,
+);
 
 /**
  * @swagger
@@ -117,7 +158,13 @@ router.post("/refresh", refresh);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/logout", logout);
+router.post(
+  "/logout",
+  validate({
+    refreshToken: { source: "body", validators: [isString] },
+  }),
+  logout,
+);
 
 /**
  * @swagger
@@ -153,6 +200,12 @@ router.post("/logout", logout);
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/google", googleLogin);
+router.post(
+  "/google",
+  validate({
+    credential: { source: "body", validators: [isString] },
+  }),
+  googleLogin,
+);
 
 export default router;
