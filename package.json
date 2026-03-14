@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "start": "tsc && node --env-file=.env.dev ./dist/src/server.js",
     "dev": "nodemon ./src/server.ts",
     "test": "tsc && jest --runInBand --detectOpenHandles --forceExit",

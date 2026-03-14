@@ -43,16 +43,17 @@ export default function Avatar({
   className = "",
 }: AvatarProps) {
   const resolved = resolveAvatarSrc(src);
-  const [imgError, setImgError] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const isCurrentSrcFailed = Boolean(resolved && failedSrc === resolved);
 
-  if (resolved && !imgError) {
+  if (resolved && !isCurrentSrcFailed) {
     return (
       <img
         src={resolved}
         alt={username}
         className={`rounded-circle object-fit-cover ${className}`.trim()}
         style={{ width: size, height: size }}
-        onError={() => setImgError(true)}
+        onError={() => setFailedSrc(resolved)}
       />
     );
   }
