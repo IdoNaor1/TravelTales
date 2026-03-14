@@ -21,7 +21,7 @@ interface UsePostsResult {
 
 export function usePosts({
   senderId,
-  limit = 10,
+  limit = 9,
 }: UsePostsOptions = {}): UsePostsResult {
   const [posts, setPosts] = useState<IPost[]>([]);
   const [cursor, setCursor] = useState<string | undefined>(undefined);

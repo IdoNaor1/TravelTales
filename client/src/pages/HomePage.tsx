@@ -1,12 +1,21 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePosts } from "../hooks/usePosts";
 import PostCard from "../components/PostCard";
+import { filterPostsByQuery } from "../utils/postSearch";
 
 function HomePage() {
   const { user } = useAuth();
   const { posts, isLoading, isFetchingMore, hasMore, error, sentinelRef } =
     usePosts();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredPosts = useMemo(
+    () => filterPostsByQuery(posts, searchQuery),
+    [posts, searchQuery],
+  );
+  const isSearchActive = searchQuery.trim().length > 0;
 
   return (
     <div className="container py-4" style={{ maxWidth: 900 }}>
@@ -23,6 +32,29 @@ function HomePage() {
             + New Post
           </Link>
         )}
+      </div>
+
+      <div className="home-search-wrap my-3">
+        <div className="home-search-input-wrap">
+          <input
+            type="text"
+            className="form-control home-search-field"
+            placeholder="Search by title, content, or username..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            aria-label="Search posts"
+          />
+          {isSearchActive && (
+            <button
+              type="button"
+              className="home-search-clear"
+              onClick={() => setSearchQuery("")}
+              aria-label="Clear search"
+            >
+              x
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error banner */}
@@ -72,9 +104,16 @@ function HomePage() {
         </div>
       )}
 
-      {!isLoading && posts.length > 0 && (
+      {!isLoading && posts.length > 0 && filteredPosts.length === 0 && !error && (
+        <div className="empty-state text-center text-muted">
+          <p className="fs-5 mb-1">No matching posts found.</p>
+          <p className="small mb-0">Try a different search term.</p>
+        </div>
+      )}
+
+      {!isLoading && filteredPosts.length > 0 && (
         <div className="row g-3">
-          {posts.map((post) => (
+          {filteredPosts.map((post) => (
             <div key={post._id} className="col-12 col-sm-6 col-md-4">
               <PostCard post={post} currentUserId={user?._id} />
             </div>
@@ -97,7 +136,7 @@ function HomePage() {
       )}
 
       {/* End of feed */}
-      {!isLoading && !hasMore && posts.length > 0 && (
+      {!isLoading && !hasMore && posts.length > 0 && !isSearchActive && (
         <p className="text-center text-muted small py-3">
           You've reached the end of the feed.
         </p>

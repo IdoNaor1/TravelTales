@@ -12,7 +12,7 @@ export interface ILikeResponse {
 }
 
 const postService = {
-  getPosts(cursor?: string, limit = 10): Promise<IPostsPage> {
+  getPosts(cursor?: string, limit = 9): Promise<IPostsPage> {
     const params = new URLSearchParams({ limit: String(limit) });
     if (cursor) params.set("cursor", cursor);
     return apiClient.get<IPostsPage>(`/posts?${params.toString()}`);
@@ -25,7 +25,7 @@ const postService = {
   getPostsBySender(
     senderId: string,
     cursor?: string,
-    limit = 10,
+    limit = 9,
   ): Promise<IPostsPage> {
     const params = new URLSearchParams({
       sender: senderId,

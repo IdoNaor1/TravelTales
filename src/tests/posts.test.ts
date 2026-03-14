@@ -2,7 +2,13 @@ import request from "supertest";
 import initApp from "../app";
 import postsModel from "../model/postsModel";
 import { Express } from "express";
-import {postsList, UserData, PostsData, getLogedInUser, createOtherUserPost} from "./utils";
+import {
+  postsList,
+  UserData,
+  PostsData,
+  getLogedInUser,
+  createOtherUserPost,
+} from "./utils";
 
 let app: Express;
 let postId = "";
@@ -69,7 +75,7 @@ describe("Posts API Tests", () => {
 
   test("Get Posts by Sender", async () => {
     const response = await request(app).get(
-      "/posts?sender=" + loggedInUser._id
+      "/posts?sender=" + loggedInUser._id,
     );
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(postsList.length - 1);
@@ -171,7 +177,11 @@ describe("Post Image Field", () => {
     const response = await request(app)
       .post("/posts")
       .set("Authorization", "Bearer " + loggedInUser.token)
-      .send({ title: "Travel to Paris", content: "Amazing trip!", image: "/public/paris.jpg" });
+      .send({
+        title: "Travel to Paris",
+        content: "Amazing trip!",
+        image: "/public/paris.jpg",
+      });
     expect(response.status).toBe(201);
     expect(response.body.image).toBe("/public/paris.jpg");
     imagePostId = response.body._id;
@@ -288,7 +298,7 @@ describe("Post Pagination", () => {
     expect(page2.body.nextCursor).toBeNull();
   });
 
-  test("GET /posts with no limit defaults to 10 and returns all 5 posts", async () => {
+  test("GET /posts with no limit defaults to 9 and returns all 5 posts", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(5);
@@ -296,12 +306,15 @@ describe("Post Pagination", () => {
   });
 
   test("Pagination respects sender filter", async () => {
-    const response = await request(app)
-      .get("/posts?sender=" + loggedInUser._id + "&limit=2");
+    const response = await request(app).get(
+      "/posts?sender=" + loggedInUser._id + "&limit=2",
+    );
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(2);
     expect(
-      response.body.posts.every((p: { sender: string }) => p.sender === loggedInUser._id)
+      response.body.posts.every(
+        (p: { sender: string }) => p.sender === loggedInUser._id,
+      ),
     ).toBe(true);
   });
 });
