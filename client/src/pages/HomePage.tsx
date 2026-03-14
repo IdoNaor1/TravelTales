@@ -104,12 +104,15 @@ function HomePage() {
         </div>
       )}
 
-      {!isLoading && posts.length > 0 && filteredPosts.length === 0 && !error && (
-        <div className="empty-state text-center text-muted">
-          <p className="fs-5 mb-1">No matching posts found.</p>
-          <p className="small mb-0">Try a different search term.</p>
-        </div>
-      )}
+      {!isLoading &&
+        posts.length > 0 &&
+        filteredPosts.length === 0 &&
+        !error && (
+          <div className="empty-state text-center text-muted">
+            <p className="fs-5 mb-1">No matching posts found.</p>
+            <p className="small mb-0">Try a different search term.</p>
+          </div>
+        )}
 
       {!isLoading && filteredPosts.length > 0 && (
         <div className="row g-3">
