@@ -26,12 +26,14 @@ afterAll((done) => {
 });
 
 describe("Posts API Tests", () => {
-  test("Sample Test Case", async () => {
+  // Validates initial empty state and baseline list response shape.
+  test("GET /posts returns empty paginated response initially", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ posts: [], nextCursor: null });
   });
 
+  // Covers create endpoint authorization and required-field validation.
   test("Create Post Unauthorized Fails", async () => {
     const post = postsList[0];
     const response = await request(app).post("/posts").send(post);
@@ -73,6 +75,7 @@ describe("Posts API Tests", () => {
     }
   });
 
+  // Covers read endpoints and sender filtering behavior.
   test("Get All Posts", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
@@ -97,6 +100,7 @@ describe("Posts API Tests", () => {
     expect(response.body.posts.length).toBe(postsList.length - 1);
   });
 
+  // Covers update endpoint success and failure scenarios.
   test("Update Post", async () => {
     const updatedPost = {
       title: "Updated Title",
@@ -142,6 +146,7 @@ describe("Posts API Tests", () => {
     expect(response.status).toBe(403);
   });
 
+  // Covers delete endpoint success and authorization/resource errors.
   test("Delete Post", async () => {
     const response = await request(app)
       .delete("/posts/" + postId)
@@ -177,6 +182,7 @@ describe("Posts API Tests", () => {
 });
 
 describe("Post Image Field", () => {
+  // Verifies optional image field persistence and response behavior.
   let imagePostId: string;
 
   beforeAll(async () => {
@@ -220,6 +226,7 @@ describe("Post Image Field", () => {
 });
 
 describe("Post Likes", () => {
+  // Verifies like toggle flow and error handling for auth/not-found cases.
   let likePostId: string;
 
   beforeAll(async () => {
@@ -270,6 +277,7 @@ describe("Post Likes", () => {
 });
 
 describe("Post Pagination", () => {
+  // Verifies cursor pagination, default limits, and sender-aware paging.
   beforeAll(async () => {
     const refreshResp = await request(app)
       .post("/auth/refresh")

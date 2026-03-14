@@ -16,6 +16,7 @@ beforeAll(async () => {
 afterAll((done) => done());
 
 describe("Users API tests", () => {
+  // Covers baseline user CRUD flow and current-user endpoint behavior.
   test("Get Current User fails", async () => {
     const response = await request(app).get("/users/me");
     expect(response.status).toBe(401);
@@ -105,6 +106,7 @@ describe("Users API tests", () => {
 });
 
 describe("Users - Edge Cases", () => {
+  // Covers authorization boundaries and uniqueness constraints on update.
   type EdgeUser = {
     _id: string;
     token: string;
@@ -187,5 +189,65 @@ describe("Users - Edge Cases", () => {
       .send({ profilePicture: newPicture });
     expect(response.status).toBe(200);
     expect(response.body.profilePicture).toBe(newPicture);
+  });
+
+  test("Update handles DB duplicate username race with 409", async () => {
+    const raceError = { code: 11000, keyPattern: { username: 1 } };
+    const spy = jest.spyOn(User, "findByIdAndUpdate").mockReturnValueOnce({
+      select: jest.fn().mockRejectedValueOnce(raceError),
+    } as never);
+
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ username: "edge_race_username" });
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe("Username is already taken");
+    spy.mockRestore();
+  });
+
+  test("Update handles DB duplicate email race with 409", async () => {
+    const raceError = { code: 11000, keyPattern: { email: 1 } };
+    const spy = jest.spyOn(User, "findByIdAndUpdate").mockReturnValueOnce({
+      select: jest.fn().mockRejectedValueOnce(raceError),
+    } as never);
+
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ email: "edge.race@example.com" });
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe("Email is already registered");
+    spy.mockRestore();
+  });
+
+  test("Update handles generic DB duplicate race with 409", async () => {
+    const raceError = { code: 11000, keyPattern: { other: 1 } };
+    const spy = jest.spyOn(User, "findByIdAndUpdate").mockReturnValueOnce({
+      select: jest.fn().mockRejectedValueOnce(raceError),
+    } as never);
+
+    const response = await request(app)
+      .put("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token)
+      .send({ username: "edge_race_generic" });
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe("User already exists");
+    spy.mockRestore();
+  });
+
+  test("Get current user returns 404 when token belongs to deleted user", async () => {
+    const deleteResponse = await request(app)
+      .delete("/users/" + userA._id)
+      .set("Authorization", "Bearer " + userA.token);
+    expect(deleteResponse.status).toBe(200);
+
+    const meResponse = await request(app)
+      .get("/users/me")
+      .set("Authorization", "Bearer " + userA.token);
+    expect(meResponse.status).toBe(404);
   });
 });

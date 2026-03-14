@@ -10,6 +10,7 @@ import {
   generateEmbedding,
   generateAndStoreEmbeddings,
 } from "../services/embeddingService";
+import * as ragService from "../services/ragService";
 import { queryRAG, ValidationError } from "../services/ragService";
 import { getLogedInUser, UserData } from "./utils";
 
@@ -73,6 +74,7 @@ beforeEach(() => {
 // ===========================================================================
 
 describe("chunkText", () => {
+  // Verifies text chunking behavior for empty, short, long, and overlap cases.
   test("returns empty array for empty string", () => {
     expect(chunkText("")).toEqual([]);
     expect(chunkText("   ")).toEqual([]);
@@ -117,6 +119,7 @@ describe("chunkText", () => {
 // ===========================================================================
 
 describe("cosineSimilarity", () => {
+  // Verifies vector similarity math across normal and edge-case inputs.
   test("identical vectors yield score 1", () => {
     const v = [1, 2, 3, 4];
     expect(cosineSimilarity(v, v)).toBeCloseTo(1, 5);
@@ -150,6 +153,7 @@ describe("cosineSimilarity", () => {
 // ===========================================================================
 
 describe("generateEmbedding", () => {
+  // Verifies embedding generation with retry logic against mocked Gemini SDK.
   test("calls Gemini embedding model and returns a number array", async () => {
     const result = await generateEmbedding("Nice trip to Tokyo");
     expect(Array.isArray(result)).toBe(true);
@@ -179,6 +183,7 @@ describe("generateEmbedding", () => {
 // ===========================================================================
 
 describe("generateAndStoreEmbeddings", () => {
+  // Verifies embedding persistence, re-indexing behavior, and invalid post handling.
   let savedPostId: string;
 
   beforeEach(async () => {
@@ -236,6 +241,7 @@ describe("generateAndStoreEmbeddings", () => {
 // ===========================================================================
 
 describe("queryRAG — input validation", () => {
+  // Verifies request validation rules before retrieval/generation pipeline runs.
   test("throws ValidationError for empty string", async () => {
     await expect(queryRAG("")).rejects.toThrow(ValidationError);
   });
@@ -264,6 +270,7 @@ describe("queryRAG — input validation", () => {
 // ===========================================================================
 
 describe("queryRAG — no results scenario", () => {
+  // Verifies fallback answer contract when retrieval yields no relevant context.
   beforeEach(async () => {
     await Embedding.deleteMany();
     // When there are no embeddings, findSimilarChunks returns [] which
@@ -284,6 +291,7 @@ describe("queryRAG — no results scenario", () => {
 // ===========================================================================
 
 describe("queryRAG — happy path", () => {
+  // Verifies successful retrieval+generation path and source de-duplication.
   let postId: string;
 
   beforeAll(async () => {
@@ -362,6 +370,7 @@ describe("queryRAG — happy path", () => {
 // ===========================================================================
 
 describe("POST /ai/ask — HTTP endpoint", () => {
+  // Verifies auth, validation, and response shape at REST API layer.
   test("returns 401 when no auth token provided", async () => {
     const response = await request(app)
       .post("/ai/ask")
@@ -396,5 +405,29 @@ describe("POST /ai/ask — HTTP endpoint", () => {
     expect(response.body).toHaveProperty("sources");
     expect(typeof response.body.answer).toBe("string");
     expect(Array.isArray(response.body.sources)).toBe(true);
+  });
+
+  test("returns 500 when queryRAG throws a non-validation error", async () => {
+    const errorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const querySpy = jest
+      .spyOn(ragService, "queryRAG")
+      .mockRejectedValueOnce(new Error("Unexpected RAG failure"));
+
+    const response = await request(app)
+      .post("/ai/ask")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ question: "What are good destinations in Italy?" });
+
+    expect(querySpy).toHaveBeenCalledWith(
+      "What are good destinations in Italy?",
+    );
+    expect(response.status).toBe(500);
+    expect(response.body).toBe("Error processing AI query");
+    expect(errorSpy).toHaveBeenCalled();
+
+    querySpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });

@@ -52,6 +52,7 @@ afterAll((done) => {
 });
 
 describe("Comments API Tests", () => {
+  // Validates required query/body fields and auth checks before CRUD flow.
   test("Get comments without postId parameter returns 400", async () => {
     const response = await request(app).get("/comments");
     expect(response.status).toBe(400);
@@ -95,6 +96,7 @@ describe("Comments API Tests", () => {
     }
   });
 
+  // Covers read endpoints by post and by comment ID.
   test("Get Comments by Non-existent Post ID returns empty", async () => {
     const response = await request(app).get(
       "/comments" + "?postId=" + nonexistentPost._id,
@@ -129,6 +131,7 @@ describe("Comments API Tests", () => {
     expect(response.body._id).toBe(commentId);
   });
 
+  // Covers update authorization, not-found handling, and successful edits.
   test("Update Comment Unauthorized fails", async () => {
     const response = await request(app)
       .put("/comments/" + commentId)
@@ -170,6 +173,7 @@ describe("Comments API Tests", () => {
     expect(getResponse.body.content).toBe(updatedComment.content);
   });
 
+  // Covers delete authorization, not-found handling, and successful deletion.
   test("Delete Comment Unauthorized fails", async () => {
     const response = await request(app).delete("/comments/" + commentId);
     expect(response.status).toBe(401);
