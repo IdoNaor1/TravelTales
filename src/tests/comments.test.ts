@@ -52,10 +52,26 @@ afterAll((done) => {
 });
 
 describe("Comments API Tests", () => {
-  test("Sample Test Case", async () => {
+  // Validates required query/body fields and auth checks before CRUD flow.
+  test("Get comments without postId parameter returns 400", async () => {
     const response = await request(app).get("/comments");
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual([]);
+    expect(response.status).toBe(400);
+  });
+
+  test("Create comment without postId returns 400", async () => {
+    const response = await request(app)
+      .post("/comments")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ content: "A comment with no postId" });
+    expect(response.status).toBe(400);
+  });
+
+  test("Create comment without content returns 400", async () => {
+    const response = await request(app)
+      .post("/comments")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ postId: postId1 });
+    expect(response.status).toBe(400);
   });
 
   test("Create Comment Unauthorized fails", async () => {
@@ -71,14 +87,19 @@ describe("Comments API Tests", () => {
         .send(comment);
       expect(response.status).toBe(201);
       expect(response.body.postId).toBe(comment.postId);
-      expect(response.body.author).toBe(loggedInUser._id);
+      expect(
+        typeof response.body.author === "string"
+          ? response.body.author
+          : response.body.author._id,
+      ).toBe(loggedInUser._id);
       expect(response.body.content).toBe(comment.content);
     }
   });
 
+  // Covers read endpoints by post and by comment ID.
   test("Get Comments by Non-existent Post ID returns empty", async () => {
     const response = await request(app).get(
-      "/comments" + "?postId=" + nonexistentPost._id
+      "/comments" + "?postId=" + nonexistentPost._id,
     );
     expect(response.status).toBe(200);
     expect(response.body.length).toBe(0);
@@ -87,13 +108,16 @@ describe("Comments API Tests", () => {
   test("Get Comment by Post ID", async () => {
     const response = await request(app).get("/comments" + "?postId=" + postId1);
     expect(response.status).toBe(200);
-    expect(response.body.length).toBe(2); // We created 2 comments for post1
+    const expectedCount = commentsList.filter(
+      (c) => c.postId === postId1,
+    ).length;
+    expect(response.body.length).toBe(expectedCount);
     commentId = response.body[0]._id; // Save the ID of the first comment for later tests
   });
 
   test("Get Non-existent Comment by ID fails", async () => {
     const response = await request(app).get(
-      "/comments/" + nonexistentComment._id
+      "/comments/" + nonexistentComment._id,
     );
     expect(response.status).toBe(404);
   });
@@ -102,11 +126,12 @@ describe("Comments API Tests", () => {
     const response = await request(app).get("/comments/" + commentId);
     expect(response.status).toBe(200);
     expect(response.body.postId).toBe(postId1);
-    expect(response.body.author).toBe(loggedInUser._id);
+    expect(response.body.author.toString()).toBe(loggedInUser._id);
     expect(response.body.content).toBe(commentsList[0].content);
     expect(response.body._id).toBe(commentId);
   });
 
+  // Covers update authorization, not-found handling, and successful edits.
   test("Update Comment Unauthorized fails", async () => {
     const response = await request(app)
       .put("/comments/" + commentId)
@@ -148,6 +173,7 @@ describe("Comments API Tests", () => {
     expect(getResponse.body.content).toBe(updatedComment.content);
   });
 
+  // Covers delete authorization, not-found handling, and successful deletion.
   test("Delete Comment Unauthorized fails", async () => {
     const response = await request(app).delete("/comments/" + commentId);
     expect(response.status).toBe(401);

@@ -2,7 +2,13 @@ import request from "supertest";
 import initApp from "../app";
 import postsModel from "../model/postsModel";
 import { Express } from "express";
-import {postsList, UserData, PostsData, getLogedInUser, createOtherUserPost} from "./utils";
+import {
+  postsList,
+  UserData,
+  PostsData,
+  getLogedInUser,
+  createOtherUserPost,
+} from "./utils";
 
 let app: Express;
 let postId = "";
@@ -20,16 +26,34 @@ afterAll((done) => {
 });
 
 describe("Posts API Tests", () => {
-  test("Sample Test Case", async () => {
+  // Validates initial empty state and baseline list response shape.
+  test("GET /posts returns empty paginated response initially", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ posts: [], nextCursor: null });
   });
 
+  // Covers create endpoint authorization and required-field validation.
   test("Create Post Unauthorized Fails", async () => {
     const post = postsList[0];
     const response = await request(app).post("/posts").send(post);
     expect(response.status).toBe(401);
+  });
+
+  test("Create post without title returns 400", async () => {
+    const response = await request(app)
+      .post("/posts")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ content: "Content without a title" });
+    expect(response.status).toBe(400);
+  });
+
+  test("Create post without content returns 400", async () => {
+    const response = await request(app)
+      .post("/posts")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ title: "Title without content" });
+    expect(response.status).toBe(400);
   });
 
   test("Create Post", async () => {
@@ -51,6 +75,7 @@ describe("Posts API Tests", () => {
     }
   });
 
+  // Covers read endpoints and sender filtering behavior.
   test("Get All Posts", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
@@ -69,12 +94,13 @@ describe("Posts API Tests", () => {
 
   test("Get Posts by Sender", async () => {
     const response = await request(app).get(
-      "/posts?sender=" + loggedInUser._id
+      "/posts?sender=" + loggedInUser._id,
     );
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(postsList.length - 1);
   });
 
+  // Covers update endpoint success and failure scenarios.
   test("Update Post", async () => {
     const updatedPost = {
       title: "Updated Title",
@@ -120,6 +146,7 @@ describe("Posts API Tests", () => {
     expect(response.status).toBe(403);
   });
 
+  // Covers delete endpoint success and authorization/resource errors.
   test("Delete Post", async () => {
     const response = await request(app)
       .delete("/posts/" + postId)
@@ -155,6 +182,7 @@ describe("Posts API Tests", () => {
 });
 
 describe("Post Image Field", () => {
+  // Verifies optional image field persistence and response behavior.
   let imagePostId: string;
 
   beforeAll(async () => {
@@ -171,7 +199,11 @@ describe("Post Image Field", () => {
     const response = await request(app)
       .post("/posts")
       .set("Authorization", "Bearer " + loggedInUser.token)
-      .send({ title: "Travel to Paris", content: "Amazing trip!", image: "/public/paris.jpg" });
+      .send({
+        title: "Travel to Paris",
+        content: "Amazing trip!",
+        image: "/public/paris.jpg",
+      });
     expect(response.status).toBe(201);
     expect(response.body.image).toBe("/public/paris.jpg");
     imagePostId = response.body._id;
@@ -194,6 +226,7 @@ describe("Post Image Field", () => {
 });
 
 describe("Post Likes", () => {
+  // Verifies like toggle flow and error handling for auth/not-found cases.
   let likePostId: string;
 
   beforeAll(async () => {
@@ -244,6 +277,7 @@ describe("Post Likes", () => {
 });
 
 describe("Post Pagination", () => {
+  // Verifies cursor pagination, default limits, and sender-aware paging.
   beforeAll(async () => {
     const refreshResp = await request(app)
       .post("/auth/refresh")
@@ -296,12 +330,17 @@ describe("Post Pagination", () => {
   });
 
   test("Pagination respects sender filter", async () => {
-    const response = await request(app)
-      .get("/posts?sender=" + loggedInUser._id + "&limit=2");
+    const response = await request(app).get(
+      "/posts?sender=" + loggedInUser._id + "&limit=2",
+    );
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(2);
     expect(
-      response.body.posts.every((p: { sender: string }) => p.sender === loggedInUser._id)
+      response.body.posts.every(
+        (p: { sender: string | { _id: string } }) =>
+          (typeof p.sender === "string" ? p.sender : p.sender._id) ===
+          loggedInUser._id,
+      ),
     ).toBe(true);
   });
 });
