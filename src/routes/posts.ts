@@ -67,16 +67,7 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 posts:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Post'
- *                 nextCursor:
- *                   type: string
- *                   nullable: true
- *                   example: 507f1f77bcf86cd799439012
+ *               $ref: '#/components/schemas/PaginatedPostsResponse'
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
@@ -129,6 +120,8 @@ router
  *     summary: Update post
  *     description: Update an existing post's title and/or content.
  *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -159,6 +152,8 @@ router
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Post'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -167,6 +162,8 @@ router
  *     summary: Delete post
  *     description: Delete a post by its ID.
  *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -186,6 +183,8 @@ router
  *                 message:
  *                   type: string
  *                   example: Post deleted successfully
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -243,14 +242,7 @@ router
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 likesCount:
- *                   type: number
- *                   example: 5
- *                 isLikedByUser:
- *                   type: boolean
- *                   example: true
+ *               $ref: '#/components/schemas/LikeToggleResponse'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
