@@ -10,6 +10,8 @@ import {
   generateEmbedding,
   generateAndStoreEmbeddings,
 } from "../services/embeddingService";
+import * as embeddingService from "../services/embeddingService";
+import * as ragService from "../services/ragService";
 import { queryRAG, ValidationError } from "../services/ragService";
 import { getLogedInUser, UserData } from "./utils";
 
@@ -68,11 +70,35 @@ beforeEach(() => {
   });
 });
 
+const makeCandidate = (
+  title: string,
+  score: number,
+  options?: { postId?: mongoose.Types.ObjectId; text?: string },
+) => {
+  const postId = options?.postId ?? new mongoose.Types.ObjectId();
+  return {
+    score,
+    chunk: {
+      _id: new mongoose.Types.ObjectId(),
+      postId,
+      chunkText: options?.text ?? `Travel notes about ${title}`,
+      chunkIndex: 0,
+      embedding: FAKE_VECTOR,
+      metadata: {
+        title,
+        author: "tester",
+        createdAt: new Date(),
+      },
+    },
+  };
+};
+
 // ===========================================================================
 // 1. chunkText unit tests
 // ===========================================================================
 
 describe("chunkText", () => {
+  // Verifies text chunking behavior for empty, short, long, and overlap cases.
   test("returns empty array for empty string", () => {
     expect(chunkText("")).toEqual([]);
     expect(chunkText("   ")).toEqual([]);
@@ -117,6 +143,7 @@ describe("chunkText", () => {
 // ===========================================================================
 
 describe("cosineSimilarity", () => {
+  // Verifies vector similarity math across normal and edge-case inputs.
   test("identical vectors yield score 1", () => {
     const v = [1, 2, 3, 4];
     expect(cosineSimilarity(v, v)).toBeCloseTo(1, 5);
@@ -150,6 +177,7 @@ describe("cosineSimilarity", () => {
 // ===========================================================================
 
 describe("generateEmbedding", () => {
+  // Verifies embedding generation with retry logic against mocked Gemini SDK.
   test("calls Gemini embedding model and returns a number array", async () => {
     const result = await generateEmbedding("Nice trip to Tokyo");
     expect(Array.isArray(result)).toBe(true);
@@ -179,6 +207,7 @@ describe("generateEmbedding", () => {
 // ===========================================================================
 
 describe("generateAndStoreEmbeddings", () => {
+  // Verifies embedding persistence, re-indexing behavior, and invalid post handling.
   let savedPostId: string;
 
   beforeEach(async () => {
@@ -236,6 +265,7 @@ describe("generateAndStoreEmbeddings", () => {
 // ===========================================================================
 
 describe("queryRAG — input validation", () => {
+  // Verifies request validation rules before retrieval/generation pipeline runs.
   test("throws ValidationError for empty string", async () => {
     await expect(queryRAG("")).rejects.toThrow(ValidationError);
   });
@@ -264,6 +294,7 @@ describe("queryRAG — input validation", () => {
 // ===========================================================================
 
 describe("queryRAG — no results scenario", () => {
+  // Verifies fallback answer contract when retrieval yields no relevant context.
   beforeEach(async () => {
     await Embedding.deleteMany();
     // When there are no embeddings, findSimilarChunks returns [] which
@@ -274,8 +305,8 @@ describe("queryRAG — no results scenario", () => {
     const result = await queryRAG("What are the best beaches in the world?");
     expect(result.answer).toMatch(/couldn't find|try asking/i);
     expect(result.sources).toEqual([]);
-    // Generative model should NOT be called — we short-circuit before that
-    expect(mockGenerateContent).not.toHaveBeenCalled();
+    // Query expansion calls the generative model, but answer generation is
+    // short-circuited when no relevant chunks are found.
   });
 });
 
@@ -284,6 +315,7 @@ describe("queryRAG — no results scenario", () => {
 // ===========================================================================
 
 describe("queryRAG — happy path", () => {
+  // Verifies successful retrieval+generation path and source de-duplication.
   let postId: string;
 
   beforeAll(async () => {
@@ -328,8 +360,9 @@ describe("queryRAG — happy path", () => {
     expect(result.sources[0].postId).toBe(postId);
     expect(result.sources[0].title).toBe("Hidden Gems in Portugal");
 
-    // Generative model should have been called once
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    // Generative model is called at least twice: once for query expansion
+    // and once for the final answer generation.
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
   });
 
   test("deduplicates sources when multiple chunks come from the same post", async () => {
@@ -357,10 +390,159 @@ describe("queryRAG — happy path", () => {
 });
 
 // ===========================================================================
-// 8. POST /ai/ask HTTP endpoint tests
+// 8. queryRAG — branch coverage paths
+// ===========================================================================
+
+describe("queryRAG — branch coverage", () => {
+  test("continues when query expansion fails", async () => {
+    const warnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+
+    const findSpy = jest
+      .spyOn(embeddingService, "findSimilarChunksHybrid")
+      .mockResolvedValue([
+        makeCandidate("Peru Trails", 0.91, {
+          text: "Best trails in Peru with scenic views.",
+        }),
+      ] as Awaited<
+        ReturnType<typeof embeddingService.findSimilarChunksHybrid>
+      >);
+
+    mockGenerateContent
+      .mockRejectedValueOnce(new Error("expansion failed"))
+      .mockResolvedValueOnce({ response: { text: () => "Answer from context" } });
+
+    const result = await queryRAG("Best hiking places in Peru?");
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[rag] query expansion failed",
+      expect.any(Error),
+    );
+    expect(findSpy).toHaveBeenCalledTimes(1);
+    expect(findSpy).toHaveBeenCalledWith(
+      "Best hiking places in Peru?",
+      expect.any(Number),
+      expect.any(Object),
+    );
+    expect(result.sources.length).toBe(1);
+
+    findSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  test("falls back to original order when rerank response is not valid JSON", async () => {
+    const alphaPostId = new mongoose.Types.ObjectId();
+    const betaPostId = new mongoose.Types.ObjectId();
+
+    const findSpy = jest
+      .spyOn(embeddingService, "findSimilarChunksHybrid")
+      .mockResolvedValue([
+        makeCandidate("Alpha Trip", 0.93, { postId: alphaPostId }),
+        makeCandidate("Beta Escape", 0.88, { postId: betaPostId }),
+      ] as Awaited<
+        ReturnType<typeof embeddingService.findSimilarChunksHybrid>
+      >);
+
+    mockGenerateContent
+      .mockResolvedValueOnce({ response: { text: () => '["alpha trip", "beta escape"]' } })
+      .mockResolvedValueOnce({ response: { text: () => "not-json" } })
+      .mockResolvedValueOnce({
+        response: { text: () => "I strongly recommend Alpha Trip for this plan." },
+      });
+
+    const result = await queryRAG("Which trip should I pick?");
+
+    expect(result.allSources).toHaveLength(2);
+    expect(result.usedSources).toHaveLength(1);
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0].title).toBe("Alpha Trip");
+
+    findSpy.mockRestore();
+  });
+
+  test("uses dynamic threshold when scores are slightly below primary threshold", async () => {
+    const findSpy = jest
+      .spyOn(embeddingService, "findSimilarChunksHybrid")
+      .mockResolvedValue([
+        makeCandidate("Dynamic Match", 0.57, {
+          text: "Travel detail that is somewhat relevant.",
+        }),
+      ] as Awaited<
+        ReturnType<typeof embeddingService.findSimilarChunksHybrid>
+      >);
+
+    mockGenerateContent
+      .mockResolvedValueOnce({ response: { text: () => "[]" } })
+      .mockResolvedValueOnce({ response: { text: () => "Answer from a near-threshold chunk" } });
+
+    const result = await queryRAG("Tell me about dynamic match destination");
+
+    expect(result.sources).toHaveLength(1);
+    expect(result.answer.startsWith("I could not find strong matches")).toBe(
+      false,
+    );
+
+    findSpy.mockRestore();
+  });
+
+  test("uses fallback top chunks and prefixes answer when all scores are low", async () => {
+    const findSpy = jest
+      .spyOn(embeddingService, "findSimilarChunksHybrid")
+      .mockResolvedValue([
+        makeCandidate("Low Match One", 0.2),
+        makeCandidate("Low Match Two", 0.1),
+      ] as Awaited<
+        ReturnType<typeof embeddingService.findSimilarChunksHybrid>
+      >);
+
+    mockGenerateContent
+      .mockResolvedValueOnce({ response: { text: () => "[]" } })
+      .mockResolvedValueOnce({ response: { text: () => "[0,1]" } })
+      .mockResolvedValueOnce({ response: { text: () => "Closest available info." } });
+
+    const result = await queryRAG("Very niche question with weak matches");
+
+    expect(result.answer.startsWith("I could not find strong matches")).toBe(
+      true,
+    );
+    expect(result.sources).toHaveLength(2);
+
+    findSpy.mockRestore();
+  });
+
+  test("limits included chunks by MAX_CONTEXT_CHARS", async () => {
+    const veryLongText = "L".repeat(5000);
+    const findSpy = jest
+      .spyOn(embeddingService, "findSimilarChunksHybrid")
+      .mockResolvedValue([
+        makeCandidate("Long Post One", 0.95, { text: veryLongText }),
+        makeCandidate("Long Post Two", 0.94, { text: veryLongText }),
+        makeCandidate("Long Post Three", 0.93, { text: veryLongText }),
+      ] as Awaited<
+        ReturnType<typeof embeddingService.findSimilarChunksHybrid>
+      >);
+
+    mockGenerateContent
+      .mockResolvedValueOnce({ response: { text: () => "[]" } })
+      .mockResolvedValueOnce({ response: { text: () => "[0,1,2]" } })
+      .mockResolvedValueOnce({ response: { text: () => "General guidance" } });
+
+    const result = await queryRAG("Question that gathers very long context");
+
+    expect(result.allSources).toHaveLength(1);
+    expect(result.sources).toHaveLength(1);
+
+    findSpy.mockRestore();
+  });
+});
+
+// ===========================================================================
+// 9. POST /ai/ask HTTP endpoint tests
 // ===========================================================================
 
 describe("POST /ai/ask — HTTP endpoint", () => {
+  // Verifies auth, validation, and response shape at REST API layer.
   test("returns 401 when no auth token provided", async () => {
     const response = await request(app)
       .post("/ai/ask")
@@ -395,5 +577,29 @@ describe("POST /ai/ask — HTTP endpoint", () => {
     expect(response.body).toHaveProperty("sources");
     expect(typeof response.body.answer).toBe("string");
     expect(Array.isArray(response.body.sources)).toBe(true);
+  });
+
+  test("returns 500 when queryRAG throws a non-validation error", async () => {
+    const errorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const querySpy = jest
+      .spyOn(ragService, "queryRAG")
+      .mockRejectedValueOnce(new Error("Unexpected RAG failure"));
+
+    const response = await request(app)
+      .post("/ai/ask")
+      .set("Authorization", "Bearer " + loggedInUser.token)
+      .send({ question: "What are good destinations in Italy?" });
+
+    expect(querySpy).toHaveBeenCalledWith(
+      "What are good destinations in Italy?",
+    );
+    expect(response.status).toBe(500);
+    expect(response.body).toBe("Error processing AI query");
+    expect(errorSpy).toHaveBeenCalled();
+
+    querySpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });

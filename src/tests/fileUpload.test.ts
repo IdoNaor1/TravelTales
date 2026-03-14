@@ -32,13 +32,16 @@ afterAll((done) => {
     if (fs.existsSync(target)) {
       try {
         fs.unlinkSync(target);
-      } catch (_) { /* ignore cleanup errors */ }
+      } catch (_) {
+        /* ignore cleanup errors */
+      }
     }
   }
   done();
 });
 
 describe("File Upload API Tests", () => {
+  // Verifies auth and required file validations on upload endpoint.
   test("Upload without authentication returns 401", async () => {
     const response = await request(app).post("/file");
     expect(response.status).toBe(401);
@@ -51,6 +54,7 @@ describe("File Upload API Tests", () => {
     expect(response.status).toBe(400);
   });
 
+  // Verifies successful upload response contract and stored URL format.
   test("Successful file upload returns 200 with a url", async () => {
     const response = await request(app)
       .post("/file")
@@ -62,6 +66,7 @@ describe("File Upload API Tests", () => {
     uploadedUrls.push(response.body.url);
   });
 
+  // Verifies uploaded files are publicly retrievable from static route.
   test("Uploaded file is accessible via GET /public/<filename>", async () => {
     const uploadResponse = await request(app)
       .post("/file")

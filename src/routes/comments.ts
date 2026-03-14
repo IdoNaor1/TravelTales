@@ -113,6 +113,8 @@ router
  *     summary: Update comment
  *     description: Update an existing comment's content.
  *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -134,6 +136,8 @@ router
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Comment'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:
@@ -142,6 +146,8 @@ router
  *     summary: Delete comment
  *     description: Delete a comment by its ID.
  *     tags: [Comments]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -161,6 +167,8 @@ router
  *                 message:
  *                   type: string
  *                   example: Comment deleted successfully
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         $ref: '#/components/responses/NotFound'
  *       500:

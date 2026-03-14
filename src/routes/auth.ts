@@ -178,14 +178,7 @@ router.post(
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - credential
- *             properties:
- *               credential:
- *                 type: string
- *                 description: Google ID token obtained from the Google Sign-In button
- *                 example: eyJhbGciOiJSUzI1NiIs...
+ *             $ref: '#/components/schemas/GoogleLoginRequest'
  *     responses:
  *       200:
  *         description: Authenticated successfully
