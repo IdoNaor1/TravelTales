@@ -54,7 +54,7 @@ const router = express.Router();
  *         name: limit
  *         schema:
  *           type: integer
- *           default: 10
+ *           default: 9
  *         description: Number of posts to return (max 100)
  *       - in: query
  *         name: cursor

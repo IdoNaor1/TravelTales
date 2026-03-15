@@ -42,7 +42,7 @@ const getAllPosts = async (req: AuthRequest, res: Response) => {
     : typeof senderRaw === "string"
       ? senderRaw
       : undefined;
-  const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+  const limit = Math.min(parseInt(req.query.limit as string) || 9, 100);
   const cursor = req.query.cursor as string | undefined;
 
   try {

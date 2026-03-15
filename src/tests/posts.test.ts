@@ -322,7 +322,7 @@ describe("Post Pagination", () => {
     expect(page2.body.nextCursor).toBeNull();
   });
 
-  test("GET /posts with no limit defaults to 10 and returns all 5 posts", async () => {
+  test("GET /posts with no limit defaults to 9 and returns all 5 posts", async () => {
     const response = await request(app).get("/posts");
     expect(response.status).toBe(200);
     expect(response.body.posts.length).toBe(5);
