@@ -7,9 +7,8 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger/swagger';
 
 import dotenv from "dotenv";
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config({ path: ".env.dev" });
-}
+const envFile = process.env.NODE_ENV === "production" ? ".env.prod" : ".env.dev";
+dotenv.config({ path: envFile });
 
 const app = express();
 app.use(cors({
@@ -34,7 +33,7 @@ app.get('/api-docs.json', (req, res) => {
 
 app.use("/", routes);
 
-app.get("*", (req, res) => {
+app.get("/{*splat}", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "client", "dist", "index.html"));
 });
 
