@@ -1,12 +1,15 @@
 import express, { Express } from "express";
 import mongoose from 'mongoose';
 import cors from "cors";
+import path from "path";
 import routes from "./routes/index";
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger/swagger';
 
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.dev" });
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: ".env.dev" });
+}
 
 const app = express();
 app.use(cors({
@@ -14,6 +17,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(express.static(path.join(process.cwd(), "client", "dist")));
 app.use("/public", express.static("public"));
 
 // Swagger documentation
@@ -29,6 +33,10 @@ app.get('/api-docs.json', (req, res) => {
 });
 
 app.use("/", routes);
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "client", "dist", "index.html"));
+});
 
 const initApp = () => {
   const pr = new Promise<Express>((resolve, reject) => {
