@@ -1,7 +1,10 @@
 node_modules
 .env
 .env.dev
+.env.prod
 dist/
 coverage/
 public/*
 !public/.gitkeep
+*.pem
+*.csr
