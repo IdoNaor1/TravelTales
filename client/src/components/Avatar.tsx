@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { resolveMediaUrl } from "../services/fileService";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.PROD
+  ? ""
+  : import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 /**
  * Resolve a profile picture URL — handles both server-relative paths
